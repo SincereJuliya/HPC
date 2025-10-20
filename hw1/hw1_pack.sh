@@ -6,6 +6,6 @@
 
 cd $PBS_O_WORKDIR
 module load mpich-3.2
-mpicc -O2 -o mpi_bandwidth mpi_bandwidth.c
+mpicc -O2 -o mpi_bandwidth mpi_bandwidth.cpp
 
 mpirun.actual -np 2 ./mpi_bandwidth > mpi_results_pack.txt
