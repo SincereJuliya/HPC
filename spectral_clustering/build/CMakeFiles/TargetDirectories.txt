@@ -1,0 +1,3 @@
+/home/sincerejuliya/Documents/GitHub/HPC/spectral_clustering/build/CMakeFiles/spectral.dir
+/home/sincerejuliya/Documents/GitHub/HPC/spectral_clustering/build/CMakeFiles/edit_cache.dir
+/home/sincerejuliya/Documents/GitHub/HPC/spectral_clustering/build/CMakeFiles/rebuild_cache.dir

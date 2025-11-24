@@ -1,0 +1,1 @@
+/usr/bin/c++ CMakeFiles/spectral.dir/src/main.cpp.o CMakeFiles/spectral.dir/src/SpectralClustering.cpp.o -o spectral 
