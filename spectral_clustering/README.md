@@ -16,14 +16,13 @@ The goal is to cluster data efficiently using high-performance computing resourc
 ### 1. Create build directory
 ```bash
 cd spectral_clustering
+
 mkdir -p build
 cd build
 cmake ..
 make
-
 ./spectral
-
-then to plot the results of the spectral clustering run 
+cd ..
 python3 scripts/visualize.py --data scripts/data/mixed_dataset.csv --labels data/mixed_dataset_labels.csv
 
 
