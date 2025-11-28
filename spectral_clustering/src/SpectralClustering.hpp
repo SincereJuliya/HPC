@@ -1,5 +1,6 @@
 #pragma once
 #include <Eigen/Dense>
+#include <Eigen/Sparse>
 #include <vector>
 #include <string>
 
@@ -10,7 +11,7 @@
  * Features:
  * - Manual or automatic sigma
  * - Standardization of input
- * - k-NN similarity graph
+ * - k-NN similarity graph (dense or sparse)
  * - Normalized Laplacian L_sym
  * - Row-normalized eigenvectors before K-means
  * - Multiple K-means runs for better initialization
@@ -45,7 +46,8 @@ private:
     int kmeans_runs_;
     std::vector<int> labels_;
 
-    Eigen::MatrixXd compute_similarity(const Eigen::MatrixXd& X);
+    Eigen::MatrixXd compute_similarity_dense(const Eigen::MatrixXd& X);
+    Eigen::SparseMatrix<double> compute_similarity_sparse(const Eigen::MatrixXd& X);
     Eigen::MatrixXd compute_laplacian(const Eigen::MatrixXd& W);
     Eigen::MatrixXd standardize(const Eigen::MatrixXd& X);
     double estimate_sigma(const Eigen::MatrixXd& X);

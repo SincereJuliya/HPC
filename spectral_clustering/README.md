@@ -13,16 +13,22 @@ The goal is to cluster data efficiently using high-performance computing resourc
 
 ## 🔧 Build Instructions
 
-### 1. Create build directory
-```bash
-cd spectral_clustering
+### 1. To build and run the code, use the provided scripts
 
-mkdir -p build
-cd build
-cmake ..
-make
-./spectral
-cd ..
-python3 scripts/visualize.py --data scripts/data/mixed_dataset.csv --labels data/mixed_dataset_labels.csv
+**MPI version:**
+```bash
+./mpi.sh
+```
+
+**Non-MPI version:**
+```bash
+./nonmpi.sh
+```
+
+### 2. Output
+
+- Plots will be saved in the spectral_clustering/plots folder.
+
+- Tables with results and cluster labels will be saved in the spectral_clustering/data folder.
 
 
