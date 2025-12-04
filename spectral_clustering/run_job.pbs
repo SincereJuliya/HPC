@@ -1,25 +1,36 @@
 #!/bin/bash
-#PBS -N SpectralFinal
+#PBS -N SpectralVictory
 #PBS -l select=1:ncpus=4:mem=4gb
 #PBS -l walltime=00:10:00
 #PBS -q short_cpuQ
 
 cd $PBS_O_WORKDIR
 
-# 1. Pulisco e carico i moduli
+# Pulisco e carico
 module purge
 module load gcc91
 module load mpich-3.2
 
-# 2. DEBUG: Vediamo qual è il g++ corrente
-echo "Il comando 'g++' punta a:"
-which g++
-g++ --version
+# --- STRATEGIA BRUTE FORCE ---
+# Cerco il compilatore nuovo provando vari nomi comuni
+if command -v g++-9.1.0 &> /dev/null; then
+    MY_CXX=g++-9.1.0
+elif command -v g++-9.1 &> /dev/null; then
+    MY_CXX=g++-9.1
+elif command -v g++-9 &> /dev/null; then
+    MY_CXX=g++-9
+else
+    # Se fallisce tutto, provo a usare il percorso che avevamo trovato prima
+    # Spero che esista almeno questo
+    MY_CXX=/apps/gcc-9.1.0/local/bin/g++
+fi
 
-# 3. Dico a MPICH di usare semplicemente il comando 'g++'
-# (che ora punterà alla versione 9.1 grazie al modulo caricato)
-export MPICH_CXX=g++
+export MPICH_CXX=$MY_CXX
+# -----------------------------
 
-echo "Compilazione ed Esecuzione..."
+echo "Ho selezionato il compilatore: $MPICH_CXX"
+$MPICH_CXX --version
+
+echo "Compilazione..."
 chmod +x mpi.sh
 ./mpi.sh --np 4
