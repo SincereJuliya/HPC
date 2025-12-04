@@ -1,29 +1,26 @@
 #!/bin/bash
-#PBS -N SpectralForce
+#PBS -N SpectralFinal
 #PBS -l select=1:ncpus=4:mem=4gb
 #PBS -l walltime=00:10:00
 #PBS -q short_cpuQ
 
 cd $PBS_O_WORKDIR
 
-# 1. Pulisco l'ambiente per evitare conflitti
+# 1. Pulisco l'ambiente
 module purge
 
-# 2. Carico PRIMA il compilatore nuovo
+# 2. Carico i moduli
 module load gcc91
-
-# 3. Carico MPI
 module load mpich-3.2
 
-# --- PUNTO CRITICO ---
-# Catturo il percorso del g++ nuovo (che ora è la versione 9.1)
-REAL_GXX=$(which g++)
+# 3. --- FORZATURA DEL COMPILATORE ---
+# Dico a MPICH di usare esattamente questo file e non altri
+export MPICH_CXX=/apps/gcc-9.1.0/local/bin/g++
+# ------------------------------------
 
-echo "Ho trovato il compilatore gcc91 qui: $REAL_GXX"
+echo "Verifica Compilatore:"
+$MPICH_CXX --version
 
-# Obbligo MPICH a usare questo specifico file
-export MPICH_CXX=$REAL_GXX
-# ---------------------
-
+echo "Compilazione ed Esecuzione..."
 chmod +x mpi.sh
 ./mpi.sh --np 4
