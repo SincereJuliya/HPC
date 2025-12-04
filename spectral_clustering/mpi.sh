@@ -1,5 +1,6 @@
 #!/bin/bash
-
+# Ricarico MPI per sicurezza
+module load mpich-3.2 || true
 # Definisco dataset e processi
 NP=4
 DATASET="scripts/data/mixed_dataset.csv"
