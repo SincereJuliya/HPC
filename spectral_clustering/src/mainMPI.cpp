@@ -71,7 +71,7 @@ int main(int argc, char** argv){
 
     if(rank == 0) std::cout << "Read " << N << " points, dims=" << D << "\n";
 
-    SpectralClusteringMPI sc(6, 7, -1.0, 4);
+    SpectralClusteringMPI sc(8, 7, -1.0, 4);
     sc.fit(data_mat);
 
     if(rank == 0){

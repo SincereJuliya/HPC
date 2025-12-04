@@ -57,7 +57,7 @@ void save_labels_csv(const std::string& filename, const std::vector<int>& labels
 
 int main(int argc, char** argv){
     std::string filename = "../scripts/data/mixed_dataset.csv";
-    int k = 6;             // default clusters
+    int k = 8;             // default clusters
     int knn = 7;           // default k-NN
     double sigma = 0.04;   // default sigma
     int kmeans_runs = 4;   // default K-means runs

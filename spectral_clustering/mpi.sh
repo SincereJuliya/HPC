@@ -27,7 +27,7 @@ done
 echo "==== Building MPI version ===="
 mkdir -p build
 
-mpicxx -O3 -std=c++17 -I /usr/include/eigen3 \
+mpicxx -O3 -std=c++17 $(pkg-config --cflags eigen3) \
     src/mainMPI.cpp src/SpectralClusteringMPI.cpp \
     -o build/spectral_mpi
 
