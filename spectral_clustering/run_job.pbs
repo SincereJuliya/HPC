@@ -1,18 +1,17 @@
 #!/bin/bash
-#PBS -N SpectralVictory
+#PBS -N SpectralComplete
 #PBS -l select=1:ncpus=4:mem=4gb
 #PBS -l walltime=00:10:00
 #PBS -q short_cpuQ
 
 cd $PBS_O_WORKDIR
 
-# Pulisco e carico
+# 1. Pulisco e carico i moduli
 module purge
 module load gcc91
 module load mpich-3.2
 
-# --- STRATEGIA BRUTE FORCE ---
-# Cerco il compilatore nuovo provando vari nomi comuni
+# 2. Trovo il compilatore giusto (Strategia Brute Force)
 if command -v g++-9.1.0 &> /dev/null; then
     MY_CXX=g++-9.1.0
 elif command -v g++-9.1 &> /dev/null; then
@@ -20,17 +19,31 @@ elif command -v g++-9.1 &> /dev/null; then
 elif command -v g++-9 &> /dev/null; then
     MY_CXX=g++-9
 else
-    # Se fallisce tutto, provo a usare il percorso che avevamo trovato prima
-    # Spero che esista almeno questo
     MY_CXX=/apps/gcc-9.1.0/local/bin/g++
 fi
 
 export MPICH_CXX=$MY_CXX
-# -----------------------------
-
-echo "Ho selezionato il compilatore: $MPICH_CXX"
+echo "Compilatore usato: $MPICH_CXX"
 $MPICH_CXX --version
 
-echo "Compilazione..."
-chmod +x mpi.sh
-./mpi.sh --np 4
+# 3. COMPILAZIONE (Diretta qui, senza script esterni)
+echo "==== Compilazione in corso... ===="
+mkdir -p build
+
+mpicxx -O3 -std=c++17 -I ./eigen_local \
+    src/mainMPI.cpp src/SpectralClusteringMPI.cpp \
+    -o build/spectral_mpi
+
+if [ $? -ne 0 ]; then
+    echo "ERRORE: La compilazione MPI è fallita!"
+    exit 1
+fi
+echo "Compilazione OK."
+
+# 4. ESECUZIONE
+echo "==== Esecuzione MPI (4 Processi) ===="
+
+# Uso mpirun direttamente qui, dove il modulo è sicuramente carico
+mpirun -np 4 ./build/spectral_mpi scripts/data/mixed_dataset.csv
+
+echo "==== Finito ===="
