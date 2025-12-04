@@ -6,28 +6,23 @@
 
 cd $PBS_O_WORKDIR
 
-# 1. Pulisco e carico i moduli
+# 1. Moduli
 module purge
 module load gcc91
 module load mpich-3.2
 
-# 2. Trovo il compilatore giusto (Strategia Brute Force)
+# 2. Setup Compilatore (Come prima)
 if command -v g++-9.1.0 &> /dev/null; then
     MY_CXX=g++-9.1.0
 elif command -v g++-9.1 &> /dev/null; then
     MY_CXX=g++-9.1
-elif command -v g++-9 &> /dev/null; then
-    MY_CXX=g++-9
 else
     MY_CXX=/apps/gcc-9.1.0/local/bin/g++
 fi
-
 export MPICH_CXX=$MY_CXX
-echo "Compilatore usato: $MPICH_CXX"
-$MPICH_CXX --version
 
-# 3. COMPILAZIONE (Diretta qui, senza script esterni)
-echo "==== Compilazione in corso... ===="
+# 3. COMPILAZIONE
+echo "==== Compilazione ===="
 mkdir -p build
 
 mpicxx -O3 -std=c++17 -I ./eigen_local \
@@ -35,15 +30,14 @@ mpicxx -O3 -std=c++17 -I ./eigen_local \
     -o build/spectral_mpi
 
 if [ $? -ne 0 ]; then
-    echo "ERRORE: La compilazione MPI è fallita!"
+    echo "ERRORE CRITICO: Compilazione fallita."
     exit 1
 fi
-echo "Compilazione OK."
 
-# 4. ESECUZIONE
-echo "==== Esecuzione MPI (4 Processi) ===="
+# 4. ESECUZIONE (Con percorso assoluto!)
+echo "==== Esecuzione ===="
 
-# Uso mpirun direttamente qui, dove il modulo è sicuramente carico
-mpirun -np 4 ./build/spectral_mpi scripts/data/mixed_dataset.csv
+# ECCO LA MODIFICA: Uso il percorso completo
+/apps/mpich-3.2/bin/mpirun -np 4 ./build/spectral_mpi scripts/data/mixed_dataset.csv
 
 echo "==== Finito ===="
