@@ -6,20 +6,19 @@
 
 cd $PBS_O_WORKDIR
 
-# 1. Pulisco l'ambiente
+# 1. Pulisco e carico i moduli
 module purge
-
-# 2. Carico i moduli
 module load gcc91
 module load mpich-3.2
 
-# 3. --- FORZATURA DEL COMPILATORE ---
-# Dico a MPICH di usare esattamente questo file e non altri
-export MPICH_CXX=/apps/gcc-9.1.0/local/bin/g++
-# ------------------------------------
+# 2. DEBUG: Vediamo qual è il g++ corrente
+echo "Il comando 'g++' punta a:"
+which g++
+g++ --version
 
-echo "Verifica Compilatore:"
-$MPICH_CXX --version
+# 3. Dico a MPICH di usare semplicemente il comando 'g++'
+# (che ora punterà alla versione 9.1 grazie al modulo caricato)
+export MPICH_CXX=g++
 
 echo "Compilazione ed Esecuzione..."
 chmod +x mpi.sh
