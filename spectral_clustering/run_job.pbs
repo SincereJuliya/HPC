@@ -1,0 +1,20 @@
+#!/bin/bash
+#PBS -N SpectralOriginal
+#PBS -l select=1:ncpus=4:mem=4gb
+#PBS -l walltime=00:10:00
+#PBS -q short_cpuQ
+
+cd $PBS_O_WORKDIR
+
+# 1. Carico i moduli
+module load gcc91
+module load mpich-3.2
+
+# 2. Dico a MPI di usare il compilatore nuovo (GCC 9.1)
+export MPICH_CXX=g++
+
+echo "Inizio esecuzione..."
+
+# 3. Compilo ed Eseguo (usando lo script originale modificato pochissimo)
+chmod +x mpi.sh
+./mpi.sh --np 4
