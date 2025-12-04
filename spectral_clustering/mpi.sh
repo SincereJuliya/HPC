@@ -1,4 +1,12 @@
 #!/bin/bash
+# FORZO il caricamento del compilatore anche qui
+module load gcc91 || true 
+
+# Dico a MPICH di usare QUESTO g++
+export MPICH_CXX=g++
+
+echo "DEBUG COMPILATORE:"
+g++ --version
 
 # Default number of processes
 NP=4
@@ -27,7 +35,7 @@ done
 echo "==== Building MPI version ===="
 mkdir -p build
 
-mpicxx -O3 -std=c++17 -I ./eigen_local \
+mpicxx -cxx=g++ -O3 -std=c++17 -I ./eigen_local \
     src/mainMPI.cpp src/SpectralClusteringMPI.cpp \
     -o build/spectral_mpi
 
