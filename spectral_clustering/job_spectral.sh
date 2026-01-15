@@ -9,7 +9,7 @@ cd $PBS_O_WORKDIR
 # 1. Load modules
 module load gcc91
 module load mpich-3.2
-module load python/3.x  # Replace with the correct Python version
+module load python-3.10.14  # Replace with the correct Python version
 
 # Ensure correct GCC version is used
 export PATH=/apps/gcc-9.1.0/bin:$PATH
