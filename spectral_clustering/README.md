@@ -71,6 +71,7 @@ Check installed packages:
 python3 -m pip list --user
 ```
 Example output:
+
 ![alt text](screenshots/image.png)
 
 ### 3. HPC Job Example (PBS)
