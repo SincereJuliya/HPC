@@ -26,7 +26,7 @@ fi
 
 # 3. Compile MPI version
 echo "==== Compiling MPI version ===="
-mpicxx -std=c++17 -O3 -o spectral_clustering_mpi src/main.cpp
+mpicxx -std=c++17 -O3 -I ./eigen_local -o spectral_clustering_mpi src/main.cpp
 if [ $? -ne 0 ]; then
     echo "Error: MPI compilation failed."
     exit 1
