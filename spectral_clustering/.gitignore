@@ -1,0 +1,10 @@
+# Build files
+build/
+
+# Eigen source archive
+eigen-3.4.0/
+eigen.tar.gz
+
+# Generated data and plots
+data/
+plots/
