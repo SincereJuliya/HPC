@@ -71,7 +71,7 @@ Check installed packages:
 python3 -m pip list --user
 ```
 Example output:
-![alt text](spectral_clustering/screenshots/image.png)
+![alt text](screenshots/image.png)
 
 ### 3. HPC Job Example (PBS)
 
