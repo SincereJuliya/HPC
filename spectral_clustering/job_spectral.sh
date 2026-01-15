@@ -6,20 +6,34 @@
 
 cd $PBS_O_WORKDIR
 
-# 1. Carico il compilatore moderno (GCC 9.1 supporta C++17)
+# 1. Load modules
 module load gcc91
-
-# 2. Carico MPI (dopo il compilatore)
 module load mpich-3.2
+module load python/3.x  # Replace with the correct Python version
 
-echo "Ambiente:"
+# Ensure correct GCC version is used
+export PATH=/apps/gcc-9.1.0/bin:$PATH
+export LD_LIBRARY_PATH=/apps/gcc-9.1.0/lib64:$LD_LIBRARY_PATH
+
+echo "==== Modules loaded ===="
 module list
 which mpicxx
 
-# 3. Genero i dati (per sicurezza, nel caso mancassero)
-# Nota: Assicurati che python3 funzioni, altrimenti 'module load python-3.x'
+# 2. Generate data
+echo "==== Generating data ===="
 python3 scripts/synt_data.py --points 1000 --type mixed
+if [ $? -ne 0 ]; then
+    echo "Error: Data generation failed."
+    exit 1
+fi
 
-echo "Compilazione ed Esecuzione..."
+# 3. Compile and run MPI version
+echo "==== Compiling and running ===="
 chmod +x mpi.sh
-./mpi.sh --np 4
+./mpi.sh
+if [ $? -ne 0 ]; then
+    echo "Error: MPI execution failed."
+    exit 1
+fi
+
+echo "==== Job completed successfully ===="
