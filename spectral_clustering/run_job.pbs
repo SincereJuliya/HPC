@@ -6,38 +6,42 @@
 
 cd $PBS_O_WORKDIR
 
-# 1. Moduli
+# 1. Load modules
 module purge
 module load gcc91
-module load mpich-3.2
+module load mpich-3.2.1--gcc-9.1.0
+module load python-3.10.14
 
-# 2. Setup Compilatore (Come prima)
-if command -v g++-9.1.0 &> /dev/null; then
-    MY_CXX=g++-9.1.0
-elif command -v g++-9.1 &> /dev/null; then
-    MY_CXX=g++-9.1
-else
-    MY_CXX=/apps/gcc-9.1.0/local/bin/g++
-fi
-export MPICH_CXX=$MY_CXX
+echo "==== Modules loaded ===="
+module list
+which mpicxx
+which mpirun
 
-# 3. COMPILAZIONE
-echo "==== Compilazione ===="
-mkdir -p build
-
-mpicxx -O3 -std=c++17 -I ./eigen_local \
-    src/mainMPI.cpp src/SpectralClusteringMPI.cpp \
-    -o build/spectral_mpi
-
+# 2. Generate dataset (Python)
+echo "==== Generating data ===="
+python3 scripts/synt_data.py --points 1000 --type mixed
 if [ $? -ne 0 ]; then
-    echo "ERRORE CRITICO: Compilazione fallita."
+    echo "Error: Data generation failed."
     exit 1
 fi
 
-# 4. ESECUZIONE (Con percorso assoluto!)
-echo "==== Esecuzione ===="
+# 3. Compile MPI version
+echo "==== Compiling MPI ===="
+mkdir -p build
+mpicxx -O3 -std=c++17 -I ./eigen_local \
+    src/mainMPI.cpp src/SpectralClusteringMPI.cpp \
+    -o build/spectral_mpi
+if [ $? -ne 0 ]; then
+    echo "Error: MPI compilation failed."
+    exit 1
+fi
 
-# ECCO LA MODIFICA: Uso il percorso completo
-/apps/mpich-3.2/bin/mpirun -np 4 ./build/spectral_mpi scripts/data/mixed_dataset.csv
+# 4. Run MPI binary
+echo "==== Running MPI ===="
+mpirun -np 4 ./build/spectral_mpi scripts/data/mixed_dataset.csv
+if [ $? -ne 0 ]; then
+    echo "Error: MPI execution failed."
+    exit 1
+fi
 
-echo "==== Finito ===="
+echo "==== Job completed successfully ===="

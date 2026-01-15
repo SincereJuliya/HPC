@@ -6,14 +6,11 @@
 
 cd $PBS_O_WORKDIR
 
-# 1. Load modules
+# 1. Load modules (GCC 9 + MPI under GCC 9)
+module purge
 module load gcc91
-module load mpich-3.2
-module load python-3.10.14  # Replace with the correct Python version
-
-# Ensure correct GCC version is used
-export PATH=/apps/gcc-9.1.0/bin:$PATH
-export LD_LIBRARY_PATH=/apps/gcc-9.1.0/lib64:$LD_LIBRARY_PATH
+module load mpich-3.2.1--gcc-9.1.0
+module load python-3.10.14
 
 echo "==== Modules loaded ===="
 module list
@@ -27,10 +24,17 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# 3. Compile and run MPI version
-echo "==== Compiling and running ===="
-chmod +x mpi.sh
-./mpi.sh
+# 3. Compile MPI version
+echo "==== Compiling MPI version ===="
+mpicxx -std=c++17 -O3 -o spectral_clustering_mpi src/main.cpp
+if [ $? -ne 0 ]; then
+    echo "Error: MPI compilation failed."
+    exit 1
+fi
+
+# 4. Run MPI binary
+echo "==== Running MPI version ===="
+/opt/pbs/bin/mpiexe -n 4 ./spectral_clustering_mpi
 if [ $? -ne 0 ]; then
     echo "Error: MPI execution failed."
     exit 1
