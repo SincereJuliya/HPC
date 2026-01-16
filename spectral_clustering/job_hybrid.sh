@@ -15,8 +15,8 @@ module load python-3.10.14
 echo "==== Modules loaded ===="
 
 # 2. Generate dataset (Increased points to 8000 to see the OpenMP impact)
-echo "==== Generating data (тотал 8000 point) ===="
-python3 scripts/synt_data.py --points 1300 --type mixed --name mixed_dataset_2
+echo "==== Generating data (тотал 4800 point) ===="
+python3 scripts/synt_data.py --points 900 --type mixed --name mixed_dataset_2
 if [ $? -ne 0 ]; then
     echo "Error: Data generation failed."
     exit 1
