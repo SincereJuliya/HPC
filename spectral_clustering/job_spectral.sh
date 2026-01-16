@@ -19,7 +19,7 @@ which mpirun
 
 # 2. Generate dataset via Python
 echo "==== Generating data ===="
-python3 scripts/synt_data.py --points 8000 --type mixed --name mixed_dataset_1
+python3 scripts/synt_data.py --points 1300 --type mixed --name mixed_dataset_1
 if [ $? -ne 0 ]; then
     echo "Error: Data generation failed."
     exit 1
