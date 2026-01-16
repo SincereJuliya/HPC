@@ -48,6 +48,6 @@ fi
 
 # 5. Visualization for MPI version
 echo "==== Generating visualization (MPI) ===="
-python3 scripts/plot_clusters.py --data data/mixed_dataset_1.csv --labels data/mixed_dataset_1_labels.csv
+python3 scripts/visualize.py --data data/mixed_dataset_1.csv --labels data/mixed_dataset_1_labels.csv
 
 echo "==== Job completed successfully ===="

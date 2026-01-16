@@ -48,6 +48,6 @@ fi
 
 # 5. Visualization for Hybrid version
 echo "==== Generating visualization (Hybrid) ===="
-python3 scripts/plot_clusters.py --data data/mixed_dataset_2.csv --labels data/mixed_dataset_2_labels.csv
+python3 scripts/visualize.py --data data/mixed_dataset_2.csv --labels data/mixed_dataset_2_labels.csv
 
 echo "==== Job completed successfully ===="
