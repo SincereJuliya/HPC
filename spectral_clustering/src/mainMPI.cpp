@@ -39,6 +39,7 @@ int main(int argc, char** argv){
             std::cerr << "Root: cannot open or empty file " << datafile << "\n";
             MPI_Abort(MPI_COMM_WORLD, 1);
         }
+        else std::cout << "Opened: " << datafile << "\n";
     }
 
     // Broadcast dimensions N and D
@@ -76,10 +77,29 @@ int main(int argc, char** argv){
 
     if(rank == 0){
         auto labels = sc.get_labels();
-        std::ofstream out("../data/mixed_dataset_labels_mpi.csv");
-        out << "index,label\n";
-        for(size_t i=0;i<labels.size(); ++i) out << i << "," << labels[i] << "\n";
-        std::cout << "Labels written, N=" << labels.size() << "\n";
+        std::string out_path = "data/mixed_dataset_labels_mpi.csv";
+        std::ofstream out(out_path);
+
+        if(!out.is_open()){
+            std::cerr << "!!! ERROR: Failed to open " << out_path << " for writing.\n";
+            std::cerr << "Make sure the 'data' directory exists in the current folder.\n";
+            
+            // Запасной вариант: пишем в текущую директорию, если 'data' недоступна
+            out_path = "fallback_labels.csv";
+            out.open(out_path);
+            std::cout << "Attempting to save to fallback: " << out_path << "\n";
+        }
+
+        if(out.is_open()){
+            out << "index,label\n";
+            for(size_t i=0; i<labels.size(); ++i) {
+                out << i << "," << labels[i] << "\n";
+            }
+            out.close();
+            std::cout << "==== SUCCESS ====\n";
+            std::cout << "Labels saved to: " << out_path << " (N=" << labels.size() << ")\n";
+            std::cout << "=================\n";
+        }
     }
 
     MPI_Finalize();
