@@ -16,7 +16,7 @@ echo "==== Modules loaded ===="
 
 # 2. Generate dataset (Increased points to 8000 to see the OpenMP impact)
 echo "==== Generating data (8000 point) ===="
-python3 scripts/synt_data.py --points 8000 --type mixed
+python3 scripts/synt_data.py --points 8000 --type mixed --name mixed_dataset_2
 if [ $? -ne 0 ]; then
     echo "Error: Data generation failed."
     exit 1
@@ -39,7 +39,7 @@ fi
 echo "==== Running Hybrid version (1 MPI Rank x 4 OpenMP Threads) ===="
 export OMP_NUM_THREADS=4
 # -np 1 means only the Master process runs, but it will use all 4 cores for Eigen
-mpirun -np 1 ./build/spectral_hybrid scripts/data/mixed_dataset.csv
+mpirun -np 1 ./build/spectral_hybrid data/mixed_dataset_2.csv
 
 if [ $? -ne 0 ]; then
     echo "Error: Execution failed."

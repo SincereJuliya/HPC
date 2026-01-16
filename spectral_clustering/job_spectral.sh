@@ -19,7 +19,7 @@ which mpirun
 
 # 2. Generate dataset via Python
 echo "==== Generating data ===="
-python3 scripts/synt_data.py --points 8000 --type mixed
+python3 scripts/synt_data.py --points 8000 --type mixed --name mixed_dataset_1
 if [ $? -ne 0 ]; then
     echo "Error: Data generation failed."
     exit 1
@@ -40,7 +40,7 @@ fi
 # Force 1 thread per process to simulate sequential Eigen execution
 export OMP_NUM_THREADS=1
 echo "==== Running MPI version ===="
-mpirun -np 4 ./build/spectral_mpi scripts/data/mixed_dataset.csv
+mpirun -np 4 ./build/spectral_mpi data/mixed_dataset_1.csv
 if [ $? -ne 0 ]; then
     echo "Error: MPI execution failed."
     exit 1
