@@ -1,0 +1,12 @@
+==== Modules loaded ====
+/apps/mpich-3.2.1--gcc-9.1.0/bin/mpicxx
+/apps/mpich-3.2.1--gcc-9.1.0/bin/mpirun
+==== Generating data ====
+Saved CSV → data/mixed_dataset_1.csv
+Saved figure → plots/mixed_dataset_1.png
+==== Compiling MPI version ====
+==== Running MPI version ====
+Read 7800 points, dims=2
+[1/6] Standardize: 0.00010217 s
+[2/6] Local similarity block: 0.544836 s
+[3/6] MPI_Gatherv(W): 0.109667 s

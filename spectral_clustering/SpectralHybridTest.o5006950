@@ -1,0 +1,18 @@
+==== Modules loaded ====
+==== Generating data (тотал 8000 point) ====
+Saved CSV → data/mixed_dataset_2.csv
+Saved figure → plots/mixed_dataset_2.png
+==== Compiling Hybrid MPI + OpenMP version ====
+==== Running Hybrid version (1 MPI Rank x 4 OpenMP Threads) ====
+Read 7800 points, dims=2
+[1/6] Standardize: 7.6113e-05 s
+[2/6] Local similarity block: 2.16297 s
+[3/6] MPI_Gatherv(W): 0.114053 s
+[4/6] Laplacian + Eigenvectors: 524.951 s
+[5/6] MPI_Scatterv(eigvecs): 0.000295474 s
+[6/6] K-means: 0.534362 s
+----------------------------------------
+Total MPI Spectral Clustering time: 529.868 s
+----------------------------------------
+Labels written, N=7800
+==== Job completed successfully ====
