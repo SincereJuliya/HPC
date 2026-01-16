@@ -77,19 +77,22 @@ int main(int argc, char** argv){
 
     if(rank == 0){
         auto labels = sc.get_labels();
-        std::string out_path = "data/mixed_dataset_labels_mpi.csv";
+        
+        // --- LOGIC FOR UNIQUE FILENAME ---
+        std::string in_file = datafile;
+        // Find position of the last dot to remove extension (.csv)
+        size_t last_dot = in_file.find_last_of(".");
+        std::string base_name = (last_dot == std::string::npos) ? in_file : in_file.substr(0, last_dot);
+        
+        // Extract only the filename without the directory path
+        size_t last_slash = base_name.find_last_of("/\\");
+        std::string pure_name = (last_slash == std::string::npos) ? base_name : base_name.substr(last_slash + 1);
+        
+        // Result: data/mixed_dataset_1_labels.csv
+        std::string out_path = "data/" + pure_name + "_labels.csv";
+        // ---------------------------------
+
         std::ofstream out(out_path);
-
-        if(!out.is_open()){
-            std::cerr << "!!! ERROR: Failed to open " << out_path << " for writing.\n";
-            std::cerr << "Make sure the 'data' directory exists in the current folder.\n";
-            
-            // Запасной вариант: пишем в текущую директорию, если 'data' недоступна
-            out_path = "fallback_labels.csv";
-            out.open(out_path);
-            std::cout << "Attempting to save to fallback: " << out_path << "\n";
-        }
-
         if(out.is_open()){
             out << "index,label\n";
             for(size_t i=0; i<labels.size(); ++i) {
@@ -97,8 +100,7 @@ int main(int argc, char** argv){
             }
             out.close();
             std::cout << "==== SUCCESS ====\n";
-            std::cout << "Labels saved to: " << out_path << " (N=" << labels.size() << ")\n";
-            std::cout << "=================\n";
+            std::cout << "Labels saved to: " << out_path << std::endl;
         }
     }
 

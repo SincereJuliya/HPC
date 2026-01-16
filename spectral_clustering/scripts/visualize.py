@@ -3,40 +3,47 @@ import matplotlib.pyplot as plt
 import argparse
 import os
 
-def main(data_csv, labels_csv, output="plots/cluster_plot.png"):
-    os.makedirs(os.path.dirname(output), exist_ok=True)
+def main(data_csv, labels_csv, output_path):
+    # Ensure the output directory exists
+    os.makedirs("plots", exist_ok=True)
 
-    data = pd.read_csv(data_csv)
-    labels = pd.read_csv(labels_csv)
+    # UNIQUE NAMING LOGIC:
+    # If the output path is the default one, we rename it based on labels_csv
+    # e.g., if labels are 'mixed_dataset_1_labels.csv', plot becomes 'mixed_dataset_1_labels.png'
+    if "cluster_plot.png" in output_path:
+        base_name = os.path.splitext(os.path.basename(labels_csv))[0]
+        output_path = os.path.join("plots", f"{base_name}.png")
 
-    if len(data) != len(labels):
-        raise ValueError("Number of points and labels must match")
+    # Load data
+    try:
+        data = pd.read_csv(data_csv)
+        labels = pd.read_csv(labels_csv)
+    except Exception as e:
+        print(f"Error: {e}")
+        return
 
-    plt.figure(figsize=(6,6))
-    unique_labels = labels['label'].unique()
-    for lab in unique_labels:
-        pts = data[labels['label']==lab]
-        plt.scatter(pts['x'], pts['y'], s=15, label=f"Cluster {lab}")
-
-    plt.title("Spectral Clustering Result")
-    plt.xlabel("x")
-    plt.ylabel("y")
+    # Visualization
+    plt.figure(figsize=(8, 8))
+    # Using iloc to get first two columns regardless of their names (x/y or 0/1)
+    scatter = plt.scatter(data.iloc[:, 0], data.iloc[:, 1], 
+                        c=labels['label'], cmap='tab10', s=10, alpha=0.6)
+    
+    plt.title(f"Spectral Clustering Result\nSource: {os.path.basename(labels_csv)}")
+    plt.colorbar(scatter, label="Cluster ID")
     plt.axis("equal")
-    plt.legend()
     plt.tight_layout()
-    plt.savefig(output, dpi=200)
-    print(f"Plot saved to {output}")
-    plt.show()
-
+    
+    plt.savefig(output_path, dpi=200)
+    print(f"✅ Success! Plot saved to: {output_path}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data", type=str, default="../scripts/data/mixed_dataset.csv",
-                        help="CSV with points (x,y)")
-    parser.add_argument("--labels", type=str, default="../data/mixed_dataset_labels.csv",
-                        help="CSV with cluster labels")
-    parser.add_argument("--output", type=str, default="../plots/cluster_plot.png",
-                        help="Output image file")
+    # Path to input coordinates
+    parser.add_argument("--data", type=str, default="data/mixed_dataset_1.csv")
+    # Path to cluster labels
+    parser.add_argument("--labels", type=str, default="data/mixed_dataset_1_labels.csv")
+    # Output image path (automatically adjusted if left as default)
+    parser.add_argument("--output", type=str, default="plots/cluster_plot.png")
+    
     args = parser.parse_args()
-
     main(args.data, args.labels, args.output)
