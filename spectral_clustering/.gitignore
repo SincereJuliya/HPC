@@ -8,3 +8,4 @@ eigen.tar.gz
 # Generated data and plots
 data/
 plots/
+data/*.csv
