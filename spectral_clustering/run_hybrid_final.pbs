@@ -1,0 +1,42 @@
+#!/bin/bash
+#PBS -N SpectralHybridFinal
+#PBS -l select=1:ncpus=4:mem=4gb
+#PBS -l walltime=00:10:00
+#PBS -q short_cpuQ
+
+cd $PBS_O_WORKDIR
+
+module purge
+module load gcc91
+module load mpich-3.2.1--gcc-9.1.0
+
+echo "==== Modules loaded ===="
+
+# 2. Compile with OpenMP support (-fopenmp)
+echo "==== Compiling Hybrid MPI + OpenMP version ===="
+mkdir -p build
+mkdir -p data
+
+mpicxx -std=c++17 -O3 -fopenmp -I ./eigen_local \
+    src/mainMPI.cpp src/SpectralClusteringMPI.cpp \
+    -o build/spectral_hybrid
+
+if [ $? -ne 0 ]; then
+    echo "Error: Compilation failed."
+    exit 1
+fi
+
+# 3. Hybrid Execution Strategy (1 MPI Rank x 4 OpenMP Threads)
+echo "==== Running Hybrid version (1 MPI Rank x 4 OpenMP Threads) ===="
+
+export OMP_NUM_THREADS=4
+DATASET="scripts/data/mixed_dataset.csv"
+
+if [ -f "$DATASET" ]; then
+    mpirun -np 1 ./build/spectral_hybrid "$DATASET"
+else
+    echo "Error: Dataset not found."
+    exit 1
+fi
+
+echo "==== Job completed successfully ===="

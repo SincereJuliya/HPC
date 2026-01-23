@@ -74,5 +74,6 @@
         "__tree": "cpp",
         "queue": "cpp",
         "stack": "cpp"
-    }
+    },
+    "cmake.sourceDirectory": "C:/Users/anton/Documents/GitHub/HPC/spectral_clustering"
 }
