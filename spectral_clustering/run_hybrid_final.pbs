@@ -6,13 +6,16 @@
 
 cd $PBS_O_WORKDIR
 
+# 1. Load modules
 module purge
 module load gcc91
 module load mpich-3.2.1--gcc-9.1.0
+# Python non serve se usiamo il dataset esistente
 
 echo "==== Modules loaded ===="
 
-# 2. Compile with OpenMP support (-fopenmp)
+# 2. Compile with OpenMP support
+# Flag -fopenmp is CRITICAL here for Eigen parallelization
 echo "==== Compiling Hybrid MPI + OpenMP version ===="
 mkdir -p build
 mkdir -p data
@@ -29,13 +32,17 @@ fi
 # 3. Hybrid Execution Strategy (1 MPI Rank x 4 OpenMP Threads)
 echo "==== Running Hybrid version (1 MPI Rank x 4 OpenMP Threads) ===="
 
+# Setto 4 thread per Eigen
 export OMP_NUM_THREADS=4
+
+# Uso il dataset standard per confronto equo
 DATASET="scripts/data/mixed_dataset.csv"
 
 if [ -f "$DATASET" ]; then
-    mpirun -np 1 ./build/spectral_hybrid "$DATASET"
+    # -np 1 significa: 1 Processo MPI (che userà 4 thread internamente)
+    mpirun -np 1 ./build/spectral_hybrid "$DATASET" 9 7 0.05 100
 else
-    echo "Error: Dataset not found."
+    echo "Error: Dataset $DATASET not found."
     exit 1
 fi
 

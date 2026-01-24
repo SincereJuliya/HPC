@@ -29,5 +29,5 @@ private:
     Eigen::MatrixXd compute_laplacian(const Eigen::MatrixXd& W);
 
     // distributed K-means: localX is local block of eigenvectors (row-major mapping is fine)
-    void kmeans_mpi(const Eigen::MatrixXd& localX, int global_rows, const std::vector<int>& rows_count, int n_iter=200);
+    double kmeans_mpi(const Eigen::MatrixXd& localX, int global_rows, const std::vector<int>& rows_count, int n_iter=200, int seed_offset=0);
 };

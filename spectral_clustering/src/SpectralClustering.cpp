@@ -247,4 +247,3 @@ void SpectralClustering::fit(const MatrixXd& data) {
 
     std::cout << "Done clustering!" << std::endl;
 }
-

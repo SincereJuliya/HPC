@@ -5,8 +5,9 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <cstdlib> // Per atoi, atof
 
-// Read CSV (header then two columns x,y). Only used on root, but implemented generically.
+// Funzione di lettura CSV (usata solo dal root)
 Eigen::MatrixXd read_csv_root(const std::string &fname){
     std::ifstream f(fname);
     if(!f.is_open()) return Eigen::MatrixXd(0,0);
@@ -29,31 +30,45 @@ int main(int argc, char** argv){
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
+    // 1. PARAMETRI DI DEFAULT
     std::string datafile = "../scripts/data/mixed_dataset.csv";
+    int k = 8;           // Default cluster
+    int knn = 10;        // Default vicini
+    double sigma = 0.05; // Default sigma
+    int runs = 10;       // Default tentativi k-means
+
+    // 2. LETTURA ARGOMENTI DA RIGA DI COMANDO (PBS)
     if(argc > 1) datafile = argv[1];
+    if(argc > 2) k = std::atoi(argv[2]);
+    if(argc > 3) knn = std::atoi(argv[3]);
+    if(argc > 4) sigma = std::atof(argv[4]);
+    if(argc > 5) runs = std::atoi(argv[5]);
 
     Eigen::MatrixXd data;
     if(rank == 0){
+        std::cout << "--- CONFIGURAZIONE MPI ---" << std::endl;
+        std::cout << "Dataset: " << datafile << std::endl;
+        std::cout << "K=" << k << ", Knn=" << knn << ", Sigma=" << sigma << ", Runs=" << runs << std::endl;
+
         data = read_csv_root(datafile);
         if(data.rows() == 0){
             std::cerr << "Root: cannot open or empty file " << datafile << "\n";
             MPI_Abort(MPI_COMM_WORLD, 1);
         }
-        else std::cout << "Opened: " << datafile << "\n";
     }
 
-    // Broadcast dimensions N and D
+    // Broadcast dimensioni
     int N = 0, D = 0;
     if(rank == 0){ N = (int)data.rows(); D = (int)data.cols(); }
     MPI_Bcast(&N, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(&D, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
     if(N == 0 || D == 0){
-        if(rank == 0) std::cerr << "Invalid data dims\n";
         MPI_Finalize();
         return 1;
     }
 
-    // Pack data on root as row-major and broadcast
+    // Preparazione buffer per invio dati
     std::vector<double> buffer;
     if(rank == 0){
         buffer.resize((size_t)N * (size_t)D);
@@ -65,43 +80,23 @@ int main(int argc, char** argv){
     }
     MPI_Bcast(buffer.data(), N*D, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-    // Map buffer into Eigen matrix (row-major)
+    // Mappatura in Eigen
     typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> MatrixRowMajor;
     MatrixRowMajor data_mat = MatrixRowMajor::Zero(N, D);
     std::memcpy(data_mat.data(), buffer.data(), sizeof(double) * (size_t)N * (size_t)D);
 
-    if(rank == 0) std::cout << "Read " << N << " points, dims=" << D << "\n";
-
-    SpectralClusteringMPI sc(8, 7, -1.0, 4);
+    // 3. ESECUZIONE CLUSTERING CON I PARAMETRI DINAMICI
+    SpectralClusteringMPI sc(k, knn, sigma, runs);
     sc.fit(data_mat);
 
     if(rank == 0){
         auto labels = sc.get_labels();
-        
-        // --- LOGIC FOR UNIQUE FILENAME ---
-        std::string in_file = datafile;
-        // Find position of the last dot to remove extension (.csv)
-        size_t last_dot = in_file.find_last_of(".");
-        std::string base_name = (last_dot == std::string::npos) ? in_file : in_file.substr(0, last_dot);
-        
-        // Extract only the filename without the directory path
-        size_t last_slash = base_name.find_last_of("/\\");
-        std::string pure_name = (last_slash == std::string::npos) ? base_name : base_name.substr(last_slash + 1);
-        
-        // Result: data/mixed_dataset_1_labels.csv
-        std::string out_path = "data/" + pure_name + "_labels.csv";
-        // ---------------------------------
-
-        std::ofstream out(out_path);
-        if(out.is_open()){
-            out << "index,label\n";
-            for(size_t i=0; i<labels.size(); ++i) {
-                out << i << "," << labels[i] << "\n";
-            }
-            out.close();
-            std::cout << "==== SUCCESS ====\n";
-            std::cout << "Labels saved to: " << out_path << std::endl;
-        }
+        // ATTENZIONE: Salviamo con un nome chiaro
+        std::string outfile = "data/mixed_dataset_labels_mpi.csv";
+        std::ofstream out(outfile);
+        out << "index,label\n";
+        for(size_t i=0;i<labels.size(); ++i) out << i << "," << labels[i] << "\n";
+        std::cout << "Labels scritte su: " << outfile << "\n";
     }
 
     MPI_Finalize();
