@@ -96,5 +96,6 @@ The final visualization confirms the robustness of the approach:
 - **Spirals:** Distinctly clustered, tracing the non-linear manifold correctly.
 - **Blobs & Moons:** Preserved as coherent, dense clusters with no fragmentation.
 
-*[Insert Final Figure Here - Figure\_new\_clust.png]*
+Output:
+![alt text](screenshots/Figure_new_clust.png)
 
