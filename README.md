@@ -39,6 +39,7 @@ Spectral_Clustering_HPC/
 │   ├── dataset_mca_20k.csv           # Input: Mouse Cell Atlas (20k cells) for scalability testing
 │   └── dataset_mca_20k_labels.csv    # Output: Cluster labels for the biological dataset
 │
+├── old_base_code/              # Oldest try and implementations
 ├── eigen_local/                # (Optional) Local copy of Eigen 3 library
 ├── Makefile                    # Build automation
 └── README.md                   # Documentation
