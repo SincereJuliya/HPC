@@ -1,5 +1,5 @@
 # High Performance Spectral Clustering
-
+![Result Preview](mixed_dataset_labels_mpi_plot.png)
 ![C++](https://img.shields.io/badge/C++-17-blue.svg)
 ![MPI](https://img.shields.io/badge/MPI-OpenMP-orange.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
