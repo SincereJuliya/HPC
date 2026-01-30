@@ -7,7 +7,7 @@
 A highly optimized, hybrid parallel implementation of the **Spectral Clustering** algorithm.
 This project combines **MPI** (Distributed Memory) and **OpenMP** (Shared Memory) to efficiently cluster large datasets using the Normalized Symmetric Laplacian and K-Means.
 
-## ��� Features
+##  Features
 
 * **Hybrid Parallelism:** Uses MPI for inter-node communication and OpenMP for intra-node acceleration.
 * **Self-Tuning Similarity:** Implements Zelnik-Manor & Perona (2004) local scaling for adaptive sigma.
@@ -15,7 +15,7 @@ This project combines **MPI** (Distributed Memory) and **OpenMP** (Shared Memory
 * **Robust K-Means:** Distributed K-Means implementation for the final clustering step.
 * **Visualization:** Python scripts included for 2D scatter plots and high-dimensional t-SNE projections.
 
-## ��� Project Structure
+##  Project Structure
 
 ```text
 Spectral_Clustering_HPC/
@@ -44,7 +44,7 @@ Spectral_Clustering_HPC/
 └── README.md                   # Documentation
 ```
 
-## ���️ Prerequisites
+## ️ Prerequisites
 
 To build and run this project, you need:
 
@@ -54,7 +54,7 @@ To build and run this project, you need:
   * If not installed globally (`/usr/include/eigen3`), place the library files in a folder named `eigen_local` in the project root.
 * **Python 3** (Optional, for visualization) with pandas, matplotlib, and scikit-learn.
 
-## ��� Compilation
+##  Compilation
 
 A Makefile is provided to compile both Sequential and Parallel versions automatically.
 
@@ -73,7 +73,7 @@ This will generate two executables:
 
 Note: The Makefile uses `mpicxx` for both targets to ensure C++17 support on older HPC environments.
 
-## ��� Usage
+##  Usage
 
 ### 1. Running Locally (Interactive)
 
@@ -118,7 +118,7 @@ qsub scripts/run_seq.pbs
 
 You can customize the run configuration (nodes, cores, dataset) by editing the variables inside the `.pbs` files.
 
-## ��� Visualization
+##  Visualization
 
 After running the simulation, result labels are saved in the `data/` folder. Use the Python script to visualize them.
 
@@ -134,7 +134,7 @@ python3 scripts/plot_results.py data/mixed_dataset.csv data/mixed_dataset_labels
 python3 scripts/plot_results.py data/dataset_mca_20k.csv data/dataset_mca_20k_labels.csv
 ```
 
-## ��� Authors
+##  Authors
 
 * Antonio Di Lauro
 * Juliya Sharipova
