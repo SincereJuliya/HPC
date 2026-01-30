@@ -139,4 +139,4 @@ python3 scripts/plot_results.py data/dataset_mca_20k.csv data/dataset_mca_20k_la
 * Antonio Di Lauro
 * Juliya Sharipova
 
-Course: High Performance Computing Systems - University of Trento.
+Course: High Performance Computing - University of Trento.
