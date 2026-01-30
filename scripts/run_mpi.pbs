@@ -1,0 +1,54 @@
+#!/bin/bash
+#PBS -N SpectralMPI
+#PBS -l select=1:ncpus=4:mem=4gb
+#PBS -l walltime=00:10:00
+#PBS -q short_cpuQ
+
+cd $PBS_O_WORKDIR
+
+# 1. Load Modules
+module purge
+module load gcc91
+module load mpich-3.2.1--gcc-9.1.0
+# Eigen is loaded locally via -I flag
+
+# 2. Compile Hybrid/MPI Version
+echo "==== Compiling MPI Version ===="
+# UPDATED: We use -I ./eigen_local because the module is missing
+mpicxx -O3 -std=c++17 -fopenmp -I ./eigen_local \
+    src/mainMPI.cpp src/SpectralClusteringMPI.cpp \
+    -o spectral_mpi
+
+if [ $? -ne 0 ]; then
+    echo "!!!! COMPILATION FAILED !!!!"
+    exit 1
+fi
+
+# 3. Execution Configuration
+# We request 4 CPUs (1 chunk x 4 cpus). 
+# Strategy: 4 MPI Processes, 1 OpenMP Thread per process (Pure Distributed Logic)
+MPI_RANKS=4
+OMP_THREADS=1
+
+export OMP_NUM_THREADS=$OMP_THREADS
+
+# Dataset path relative to the repo root
+dataset=${dataset:-"data/mixed_dataset.csv"}
+K=${K:-6}
+KNN=${KNN:-10}
+Sigma=${Sigma:-0.05}
+Runs=${Runs:-10}
+
+echo "==== Running MPI Spectral Clustering ===="
+echo "   MPI Ranks: $MPI_RANKS | OpenMP Threads: $OMP_THREADS"
+echo "   Dataset: $dataset"
+
+if [ -f "$dataset" ]; then
+    # The real distributed run
+    mpirun -np $MPI_RANKS ./spectral_mpi "$dataset" $K $KNN $Sigma $Runs
+else
+    echo "Error: Dataset $dataset not found."
+    exit 1
+fi
+
+echo "==== Job completed successfully ===="

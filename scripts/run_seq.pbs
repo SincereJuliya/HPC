@@ -1,0 +1,46 @@
+#!/bin/bash
+#PBS -N SpectralSerial
+#PBS -l select=1:ncpus=1:mem=4gb
+#PBS -l walltime=00:10:00
+#PBS -q short_cpuQ
+
+cd $PBS_O_WORKDIR
+
+# 1. Load Modules
+module purge
+module load gcc91
+module load mpich-3.2.1--gcc-9.1.0 
+# Eigen is loaded locally
+
+echo "==== Modules Loaded ===="
+
+# 2. Compile Sequential Version
+echo "==== Compiling Serial Version ===="
+# UPDATED: Use mpicxx wrapper to guarantee C++17 support (fixes g++ error)
+mpicxx -O3 -std=c++17 -I ./eigen_local \
+    src/main.cpp src/SpectralClustering.cpp \
+    -o spectral_seq
+
+if [ $? -ne 0 ]; then
+    echo "!!!! COMPILATION FAILED !!!!"
+    exit 1
+fi
+
+# 3. Execution
+echo "==== Running Serial Version ===="
+DATASET="data/mixed_dataset.csv"
+
+if [ -f "$DATASET" ]; then
+    ./spectral_seq "$DATASET" 6 10 0.05 5
+else
+    echo "Error: Dataset $DATASET not found."
+    # Fallback
+    if [ -f "scripts/data/mixed_dataset.csv" ]; then
+         echo "Found in scripts/data, utilizing fallback..."
+         ./spectral_seq "scripts/data/mixed_dataset.csv" 6 10 0.05 5
+    else
+         exit 1
+    fi
+fi
+
+echo "==== Job completed successfully ===="
