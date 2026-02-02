@@ -72,13 +72,8 @@ MatrixXd SpectralClustering::compute_similarity_dense(const MatrixXd& X) {
     for(int i=0;i<N;++i){
         for(int n=0;n<knn_;++n){
             int j = all_dists[i][n].second;
-            double sigma_ij = std::sqrt(local_sigma[i]*local_sigma[j]);
             double dist_sq = std::pow(all_dists[i][n].first, 2);
-            double w = std::exp(-dist_sq / (2 * sigma_ij * sigma_ij)); // Using 2*sigma^2 convention or simple product? 
-            // NOTE: In MPI we used exp(-d^2 / (si*sj)). Let's stick to MPI formula for consistency.
-            // Consistency fix:
-            w = std::exp(-dist_sq / (local_sigma[i] * local_sigma[j]));
-            
+            double w = std::exp(-dist_sq / (local_sigma[i] * local_sigma[j]));
             W(i,j) = w;
             W(j,i) = w; // Force symmetry
         }
