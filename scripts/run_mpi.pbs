@@ -12,7 +12,7 @@ module load gcc91
 module load mpich-3.2.1--gcc-9.1.0
 # Eigen is loaded locally via -I flag
 
-# 2. Compile Hybrid/MPI Version
+# 2. Compile MPI Version
 echo "==== Compiling MPI Version ===="
 # We use -I ./eigen_local because the module is missing
 mpicxx -O3 -std=c++17 -fopenmp -I ./eigen_local \
