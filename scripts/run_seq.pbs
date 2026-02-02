@@ -16,7 +16,7 @@ echo "==== Modules Loaded ===="
 
 # 2. Compile Sequential Version
 echo "==== Compiling Serial Version ===="
-# UPDATED: Use mpicxx wrapper to guarantee C++17 support (fixes g++ error)
+# Use mpicxx wrapper to guarantee C++17 support
 mpicxx -O3 -std=c++17 -I ./eigen_local \
     src/main.cpp src/SpectralClustering.cpp \
     -o spectral_seq
