@@ -26,7 +26,7 @@ mkdir -p $OUTPUT_DIR
 RANKS=(1 2 4 8 16 32 64)
 
 for r in "${RANKS[@]}"; do
-    DATASET="data/mixed_dataset_1M_${r}.csv"   # dataset scaled with r
+    DATASET="data/mixed_dataset_100k_${r}.csv"   # dataset scaled with r
     if [ ! -f "$DATASET" ]; then
         echo "Dataset $DATASET not found! Skip."
         continue

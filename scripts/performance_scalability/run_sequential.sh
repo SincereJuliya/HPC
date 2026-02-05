@@ -21,7 +21,7 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "==== Running Serial Version ===="
-DATASET="data/mixed_dataset_1M.csv"
+DATASET="data/mixed_dataset_100k.csv"
 OUTPUT_DIR="results/sequential"
 mkdir -p $OUTPUT_DIR
 

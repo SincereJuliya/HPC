@@ -27,7 +27,7 @@ OMP_THREADS=4
 export OMP_NUM_THREADS=$OMP_THREADS
 
 for r in "${RANKS[@]}"; do
-    DATASET="data/mixed_dataset_1M_${r}.csv"  # dataset scaled with r
+    DATASET="data/mixed_dataset_100k_${r}.csv"  # dataset scaled with r
     if [ ! -f "$DATASET" ]; then
         echo "Dataset $DATASET not found! Skip."
         continue

@@ -19,7 +19,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-DATASET="data/mixed_dataset_1M.csv"
+DATASET="data/mixed_dataset_100k.csv"
 OUTPUT_DIR="results/hybrid_strong"
 mkdir -p $OUTPUT_DIR
 
