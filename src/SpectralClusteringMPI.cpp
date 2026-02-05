@@ -26,7 +26,7 @@ MatrixXd SpectralClusteringMPI::standardize(const MatrixXd& X){
 
 double SpectralClusteringMPI::estimate_sigma(const MatrixXd& X){ return 1.0; }
 
-// --- ИЗМЕНЁННЫЙ compute_similarity_block (kNN-sparse) ---
+// --- compute_similarity_block (kNN-sparse) ---
 MatrixXd SpectralClusteringMPI::compute_similarity_block(const MatrixXd& Xblock, const MatrixXd& Xfull){
     int local_n = (int)Xblock.rows();
     int N = (int)Xfull.rows();
@@ -38,7 +38,6 @@ MatrixXd SpectralClusteringMPI::compute_similarity_block(const MatrixXd& Xblock,
 
     if(local_n == 0 || N == 0) return MatrixXd(0,0);
 
-    // --- ИЗМЕНЕНО: используем только K ближайших соседей ---
     struct Neighbor { int idx; double w; };
     std::vector<std::vector<Neighbor>> sparse_W(local_n);
 
@@ -57,7 +56,6 @@ MatrixXd SpectralClusteringMPI::compute_similarity_block(const MatrixXd& Xblock,
         }
     }
 
-    // --- Временно возвращаем dense Wblock для совместимости ---
     MatrixXd Wblock(local_n, N);
     Wblock.setZero();
     for(int i=0;i<local_n;++i)
@@ -82,6 +80,11 @@ double SpectralClusteringMPI::kmeans_mpi(const MatrixXd& localX, int global_rows
     int local_n = (int)localX.rows();
     int dim = (int)localX.cols();
 
+    if(local_n == 0){
+        MPI_Barrier(MPI_COMM_WORLD);
+        return 0.0;
+    }
+
     MatrixXd centers = MatrixXd::Zero(k_, dim);
     MatrixXd local_init = MatrixXd::Zero(k_, dim);
     std::mt19937_64 rng((unsigned)(std::chrono::system_clock::now().time_since_epoch().count() + rank + seed_offset));
@@ -93,7 +96,14 @@ double SpectralClusteringMPI::kmeans_mpi(const MatrixXd& localX, int global_rows
             local_init.row(c) = localX.row(idx);
         }
     }
-    MPI_Allreduce(local_init.data(), centers.data(), k_*dim, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+    // --- chunked Allreduce for initialization ---
+    int chunk = 10000;
+    for(int start=0; start<k_*dim; start+=chunk){
+        int count = std::min(chunk, k_*dim - start);
+        MPI_Allreduce(local_init.data()+start, centers.data()+start,
+                      count, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    }
     centers /= (double)size;
 
     std::vector<int> local_labels(local_n, 0);
@@ -112,16 +122,25 @@ double SpectralClusteringMPI::kmeans_mpi(const MatrixXd& localX, int global_rows
             local_labels[i] = best_idx;
             current_sse += best;
         }
+
         MatrixXd local_sum = MatrixXd::Zero(k_, dim);
         VectorXi local_count = VectorXi::Zero(k_);
         for(int i=0;i<local_n;++i){
             local_sum.row(local_labels[i]) += localX.row(i);
             local_count(local_labels[i]) += 1;
         }
+
         MatrixXd global_sum = MatrixXd::Zero(k_, dim);
         VectorXi global_count = VectorXi::Zero(k_);
-        MPI_Allreduce(local_sum.data(), global_sum.data(), k_*dim, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+        // --- chunked Allreduce ---
+        for(int start=0; start<k_*dim; start+=chunk){
+            int count = std::min(chunk, k_*dim - start);
+            MPI_Allreduce(local_sum.data()+start, global_sum.data()+start,
+                          count, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+        }
         MPI_Allreduce(local_count.data(), global_count.data(), k_, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+
         for(int c=0;c<k_;++c)
             if(global_count(c) > 0) centers.row(c) = global_sum.row(c) / global_count(c);
     }
@@ -133,13 +152,14 @@ double SpectralClusteringMPI::kmeans_mpi(const MatrixXd& localX, int global_rows
     int offset = 0;
     for(int r=0;r<size;++r){ sendcounts[r] = rows_count[r]; displs[r] = offset; offset += sendcounts[r]; }
     if(rank == 0) labels_.assign(global_rows, 0);
+
     MPI_Gatherv(local_labels.data(), local_n, MPI_INT, rank == 0 ? labels_.data() : nullptr,
                 sendcounts.data(), displs.data(), MPI_INT, 0, MPI_COMM_WORLD);
 
     return global_sse;
 }
 
-// --- ИЗМЕНЁННЫЙ fit() с Nyström ---
+// --- fit() with Nyström ---
 void SpectralClusteringMPI::fit(const MatrixXd& data){
     int rank, size;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -158,9 +178,15 @@ void SpectralClusteringMPI::fit(const MatrixXd& data){
     for(int r=0;r<rank;++r) row_start += rows_count[r];
     int local_n = rows_count[rank];
 
+    if(local_n == 0){
+        MPI_Barrier(MPI_COMM_WORLD);
+        return;
+    }
+
     if(sigma_ < 0 && rank == 0) sigma_ = 1.0;
     MPI_Bcast(&sigma_, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    MatrixXd Xblock = (local_n > 0) ? Xs.block(row_start, 0, local_n, dim) : MatrixXd(0, dim);
+
+    MatrixXd Xblock = Xs.block(row_start, 0, local_n, dim);
 
     // --- Nyström sampling ---
     int s = std::min(2000, N);
@@ -172,7 +198,6 @@ void SpectralClusteringMPI::fit(const MatrixXd& data){
     }
     MPI_Bcast(sample_idx.data(), s, MPI_INT, 0, MPI_COMM_WORLD);
 
-    // Compute local similarity to sampled points
     MatrixXd W_local(local_n, s);
     for(int i=0;i<local_n;++i){
         for(int j=0;j<s;++j){
@@ -181,12 +206,16 @@ void SpectralClusteringMPI::fit(const MatrixXd& data){
         }
     }
 
-    // Reduce to root only
+    // --- chunked Reduce ---
     MatrixXd W_sample;
     if(rank==0) W_sample = MatrixXd(s,s);
-    MPI_Reduce(rank==0 ? MPI_IN_PLACE : W_local.data(),
-               rank==0 ? W_sample.data() : W_local.data(),
-               local_n*s, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    int block = 10000;
+    for(int start=0; start<local_n*s; start+=block){
+        int count = std::min(block, local_n*s - start);
+        MPI_Reduce(rank==0 ? MPI_IN_PLACE : W_local.data()+start,
+                   rank==0 ? W_sample.data()+start : W_local.data()+start,
+                   count, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    }
 
     // Eigen decomposition on root
     MatrixXd eigvecs_sample;
@@ -195,7 +224,9 @@ void SpectralClusteringMPI::fit(const MatrixXd& data){
         eigvecs_sample = es.eigenvectors().rightCols(k_);
     }
 
-    MPI_Bcast(eigvecs_sample.data(), s*k_, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    // --- safe Bcast ---
+    if(s*k_ > 0)
+        MPI_Bcast(eigvecs_sample.data(), s*k_, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
     // Approx eigenvectors for local points
     MatrixXd eigvecs_block(local_n, k_);
