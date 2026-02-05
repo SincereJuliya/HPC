@@ -1,266 +1,180 @@
 #include "SpectralClusteringMPI.hpp"
 #include <Eigen/Eigenvalues>
-#include <numeric>
-#include <algorithm>
-#include <cmath>
-#include <random>
-#include <iostream>
-#include <fstream>
-#include <cassert>
-#include <cstring>
-#include <chrono>
 #include <omp.h>
+#include <iostream>
+#include <random>
+#include <cmath>
 
-using Clock = std::chrono::high_resolution_clock;
 using namespace Eigen;
 
-SpectralClusteringMPI::SpectralClusteringMPI(int k,int knn,double sigma,int kmeans_runs)
+SpectralClusteringMPI::SpectralClusteringMPI(int k, int knn, double sigma, int kmeans_runs)
     : k_(k), knn_(knn), sigma_(sigma), kmeans_runs_(kmeans_runs) { }
 
-MatrixXd SpectralClusteringMPI::standardize(const MatrixXd& X){
-    RowVectorXd mean = X.colwise().mean();
-    RowVectorXd stddev = ((X.rowwise()-mean).array().square().colwise().sum()/(X.rows()-1)).sqrt();
-    RowVectorXd safe = stddev.unaryExpr([](double v){ return v < 1e-8 ? 1.0 : v; });
-    return (X.rowwise() - mean).array().rowwise() / safe.array();
+void SpectralClusteringMPI::standardize_distributed(Eigen::Ref<MatrixRowMajor> localData, int N_global) {
+    int rank, size;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    int dim = (int)localData.cols();
+
+    // Compute global mean
+    VectorXd local_sum = localData.colwise().sum();
+    VectorXd global_sum(dim);
+    MPI_Allreduce(local_sum.data(), global_sum.data(), dim, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    VectorXd mean = global_sum / (double)N_global;
+
+    // Compute global stddev
+    VectorXd local_sq_diff = (localData.rowwise() - mean.transpose()).array().square().colwise().sum();
+    VectorXd global_sq_diff(dim);
+    MPI_Allreduce(local_sq_diff.data(), global_sq_diff.data(), dim, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    
+    VectorXd stddev = (global_sq_diff / (double)(N_global - 1)).array().sqrt();
+    for(int i=0; i<dim; ++i) if(stddev(i) < 1e-8) stddev(i) = 1.0;
+
+    // Apply scaling
+    #pragma omp parallel for schedule(static)
+    for(int i=0; i<localData.rows(); ++i)
+        localData.row(i) = (localData.row(i) - mean.transpose()).array() / stddev.transpose().array();
 }
 
-double SpectralClusteringMPI::estimate_sigma(const MatrixXd& X){ return 1.0; }
-
-// --- compute_similarity_block (kNN-sparse) ---
-MatrixXd SpectralClusteringMPI::compute_similarity_block(const MatrixXd& Xblock, const MatrixXd& Xfull){
-    int local_n = (int)Xblock.rows();
-    int N = (int)Xfull.rows();
-    int dim = (int)Xblock.cols();
-
+void SpectralClusteringMPI::fit(Eigen::Ref<MatrixRowMajor> localData, int N_global) {
     int rank, size;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-    if(local_n == 0 || N == 0) return MatrixXd(0,0);
+    // Enable Eigen internal parallelism for the Rank 0 decomposition
+    initParallel();
+    setNbThreads(omp_get_max_threads());
 
-    struct Neighbor { int idx; double w; };
-    std::vector<std::vector<Neighbor>> sparse_W(local_n);
+    int local_n = (int)localData.rows();
+    int dim = (int)localData.cols();
+
+    // 1. Global Standardize
+    standardize_distributed(localData, N_global);
+
+    // 2. Nyström Landmarks: Collect s points globally
+    int s_total = 2048; 
+    int s_per_rank = s_total / size;
+    MatrixRowMajor local_landmarks(s_per_rank, dim);
+    std::mt19937 gen(42 + rank);
+    for(int i=0; i<s_per_rank; ++i)
+        local_landmarks.row(i) = localData.row(gen() % local_n);
+
+    MatrixRowMajor landmarks(s_total, dim);
+    MPI_Allgather(local_landmarks.data(), s_per_rank * dim, MPI_DOUBLE,
+                  landmarks.data(), s_per_rank * dim, MPI_DOUBLE, MPI_COMM_WORLD);
+
+    // 3. Compute W_local (Local points vs Global landmarks)
+    MatrixXd W_local(local_n, s_total);
+    double sigma2 = sigma_ * sigma_;
 
     #pragma omp parallel for schedule(static)
-    for(int il=0; il<local_n; ++il){
-        std::vector<std::pair<double,int>> dist_idx;
-        for(int j=0;j<N;++j){
-            double d = (Xblock.row(il)-Xfull.row(j)).squaredNorm();
-            dist_idx.push_back({d,j});
-        }
-        int k_neighbor = std::min(knn_, N-1);
-        std::nth_element(dist_idx.begin(), dist_idx.begin()+k_neighbor, dist_idx.end());
-        sparse_W[il].resize(k_neighbor);
-        for(int ni=0; ni<k_neighbor; ++ni){
-            sparse_W[il][ni] = { dist_idx[ni].second, std::exp(-dist_idx[ni].first/(sigma_*sigma_)) };
+    for(int i=0; i<local_n; ++i) {
+        // Cache-friendly blocking over landmarks
+        for (int j_blk = 0; j_blk < s_total; j_blk += 64) {
+            int j_lim = std::min(j_blk + 64, s_total);
+            for (int j = j_blk; j < j_lim; ++j) {
+                double d2 = (localData.row(i) - landmarks.row(j)).squaredNorm();
+                W_local(i, j) = std::exp(-d2 / sigma2);
+            }
         }
     }
 
-    MatrixXd Wblock(local_n, N);
-    Wblock.setZero();
-    for(int i=0;i<local_n;++i)
-        for(auto &nb : sparse_W[i]) Wblock(i, nb.idx) = nb.w;
+    // 4. Eigen-decomposition on Rank 0
+    MatrixXd projection(s_total, k_);
+    if(rank == 0) {
+        MatrixXd W_s(s_total, s_total);
+        for(int i=0; i<s_total; ++i)
+            for(int j=0; j<s_total; ++j)
+                W_s(i, j) = std::exp(-(landmarks.row(i) - landmarks.row(j)).squaredNorm() / sigma2);
+        
+        SelfAdjointEigenSolver<MatrixXd> es(W_s);
+        VectorXd inv_sqrt_L = es.eigenvalues().tail(k_).array().abs().inverse().sqrt();
+        projection = es.eigenvectors().rightCols(k_) * inv_sqrt_L.asDiagonal();
+    }
+    MPI_Bcast(projection.data(), s_total * k_, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-    return Wblock;
+    // 5. Project to spectral space and L2-normalize rows
+    MatrixXd local_U = W_local * projection;
+    W_local.resize(0,0); // Clear memory
+
+    #pragma omp parallel for schedule(static)
+    for(int i=0; i<local_n; ++i) {
+        double row_n = std::sqrt(local_U.row(i).squaredNorm());
+        if(row_n > 1e-12) local_U.row(i) /= row_n;
+    }
+
+    // Get rows_count for Gatherv later
+    std::vector<int> rows_count(size);
+    MPI_Allgather(&local_n, 1, MPI_INT, rows_count.data(), 1, MPI_INT, MPI_COMM_WORLD);
+
+    // 6. Distributed K-means
+    kmeans_hpc(local_U, N_global, rows_count);
 }
 
-// Normalized Symmetric Laplacian: I - D^-1/2 * W * D^-1/2
-MatrixXd SpectralClusteringMPI::compute_laplacian(const MatrixXd& W){
-    VectorXd D = W.rowwise().sum();
-    for(int i=0;i<D.size();++i) if(D(i) <= 0) D(i) = 1e-12;
-    MatrixXd D_inv_sqrt = D.array().inverse().sqrt().matrix().asDiagonal();
-    return MatrixXd::Identity(W.rows(), W.cols()) - D_inv_sqrt * W * D_inv_sqrt;
-}
-
-// Distributed K-Means
-double SpectralClusteringMPI::kmeans_mpi(const MatrixXd& localX, int global_rows, const std::vector<int>& rows_count, int n_iter, int seed_offset){
+void SpectralClusteringMPI::kmeans_hpc(const MatrixXd& localX, int N_global, const std::vector<int>& rows_count) {
     int rank, size;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     int local_n = (int)localX.rows();
     int dim = (int)localX.cols();
+    int n_threads = omp_get_max_threads();
 
-    if(local_n == 0){
-        MPI_Barrier(MPI_COMM_WORLD);
-        return 0.0;
+    MatrixXd centers(k_, dim);
+    if(rank == 0) {
+        std::mt19937 gen(777);
+        for(int i=0; i<k_; ++i) centers.row(i) = localX.row(gen() % local_n);
     }
+    MPI_Bcast(centers.data(), k_ * dim, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-    MatrixXd centers = MatrixXd::Zero(k_, dim);
-    MatrixXd local_init = MatrixXd::Zero(k_, dim);
-    std::mt19937_64 rng((unsigned)(std::chrono::system_clock::now().time_since_epoch().count() + rank + seed_offset));
+    // Pre-allocate thread buffers to avoid allocations in loop
+    std::vector<MatrixXd> thread_sums(n_threads, MatrixXd::Zero(k_, dim));
+    std::vector<VectorXi> thread_counts(n_threads, VectorXi::Zero(k_));
+    std::vector<int> local_labels(local_n);
 
-    if(local_n > 0){
-        std::uniform_int_distribution<int> ud(0, local_n - 1);
-        for(int c=0;c<k_;++c){
-            int idx = ud(rng);
-            local_init.row(c) = localX.row(idx);
+    for(int iter=0; iter<100; ++iter) {
+        for(int t=0; t<n_threads; ++t) {
+            thread_sums[t].setZero();
+            thread_counts[t].setZero();
         }
-    }
 
-    // --- chunked Allreduce for initialization ---
-    int chunk = 10000;
-    for(int start=0; start<k_*dim; start+=chunk){
-        int count = std::min(chunk, k_*dim - start);
-        MPI_Allreduce(local_init.data()+start, centers.data()+start,
-                      count, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    }
-    centers /= (double)size;
-
-    std::vector<int> local_labels(local_n, 0);
-    double current_sse = 0.0;
-
-    for(int iter=0; iter<n_iter; ++iter){
-        current_sse = 0.0;
-        #pragma omp parallel for reduction(+:current_sse)
-        for(int i=0;i<local_n;++i){
-            double best = (localX.row(i) - centers.row(0)).squaredNorm();
-            int best_idx = 0;
-            for(int c=1;c<k_;++c){
-                double d = (localX.row(i) - centers.row(c)).squaredNorm();
-                if(d < best){ best = d; best_idx = c; }
+        #pragma omp parallel
+        {
+            int tid = omp_get_thread_num();
+            #pragma omp for schedule(static)
+            for(int i=0; i<local_n; ++i) {
+                int best_c = 0;
+                double min_d = (localX.row(i) - centers.row(0)).squaredNorm();
+                for(int c=1; c<k_; ++c) {
+                    double d = (localX.row(i) - centers.row(c)).squaredNorm();
+                    if(d < min_d) { min_d = d; best_c = c; }
+                }
+                local_labels[i] = best_c;
+                thread_sums[tid].row(best_c) += localX.row(i);
+                thread_counts[tid](best_c)++;
             }
-            local_labels[i] = best_idx;
-            current_sse += best;
         }
 
-        MatrixXd local_sum = MatrixXd::Zero(k_, dim);
-        VectorXi local_count = VectorXi::Zero(k_);
-        for(int i=0;i<local_n;++i){
-            local_sum.row(local_labels[i]) += localX.row(i);
-            local_count(local_labels[i]) += 1;
+        MatrixXd local_sum_all = MatrixXd::Zero(k_, dim);
+        VectorXi local_count_all = VectorXi::Zero(k_);
+        for(int t=0; t<n_threads; ++t) {
+            local_sum_all += thread_sums[t];
+            local_count_all += thread_counts[t];
         }
 
-        MatrixXd global_sum = MatrixXd::Zero(k_, dim);
-        VectorXi global_count = VectorXi::Zero(k_);
+        MatrixXd global_sums(k_, dim);
+        VectorXi global_counts(k_);
+        MPI_Allreduce(local_sum_all.data(), global_sums.data(), k_*dim, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+        MPI_Allreduce(local_count_all.data(), global_counts.data(), k_, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
-        // --- chunked Allreduce ---
-        for(int start=0; start<k_*dim; start+=chunk){
-            int count = std::min(chunk, k_*dim - start);
-            MPI_Allreduce(local_sum.data()+start, global_sum.data()+start,
-                          count, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-        }
-        MPI_Allreduce(local_count.data(), global_count.data(), k_, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-
-        for(int c=0;c<k_;++c)
-            if(global_count(c) > 0) centers.row(c) = global_sum.row(c) / global_count(c);
+        for(int c=0; c<k_; ++c)
+            if(global_counts(c) > 0) centers.row(c) = global_sums.row(c) / (double)global_counts(c);
     }
 
-    double global_sse = 0.0;
-    MPI_Allreduce(&current_sse, &global_sse, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    // Final result gathering on Rank 0
+    if(rank == 0) labels_.resize(N_global);
+    std::vector<int> displs(size, 0);
+    for(int r=1; r<size; ++r) displs[r] = displs[r-1] + rows_count[r-1];
 
-    std::vector<int> sendcounts(size), displs(size);
-    int offset = 0;
-    for(int r=0;r<size;++r){ sendcounts[r] = rows_count[r]; displs[r] = offset; offset += sendcounts[r]; }
-    if(rank == 0) labels_.assign(global_rows, 0);
-
-    MPI_Gatherv(local_labels.data(), local_n, MPI_INT, rank == 0 ? labels_.data() : nullptr,
-                sendcounts.data(), displs.data(), MPI_INT, 0, MPI_COMM_WORLD);
-
-    return global_sse;
-}
-
-// --- fit() with Nyström ---
-void SpectralClusteringMPI::fit(const MatrixXd& data){
-    int rank, size;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
-
-    auto t1 = Clock::now();
-    MatrixXd Xs = standardize(data);
-    int N = (int)Xs.rows();
-    int dim = (int)Xs.cols();
-
-    int rows_per_proc = N / size;
-    int remainder = N % size;
-    std::vector<int> rows_count(size);
-    for(int r=0;r<size;++r) rows_count[r] = rows_per_proc + (r < remainder ? 1 : 0);
-    int row_start = 0;
-    for(int r=0;r<rank;++r) row_start += rows_count[r];
-    int local_n = rows_count[rank];
-
-    if(local_n == 0){
-        MPI_Barrier(MPI_COMM_WORLD);
-        return;
-    }
-
-    if(sigma_ < 0 && rank == 0) sigma_ = 1.0;
-    MPI_Bcast(&sigma_, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-
-    MatrixXd Xblock = Xs.block(row_start, 0, local_n, dim);
-
-    // --- Nyström sampling ---
-    int s = std::min(2000, N);
-    std::vector<int> sample_idx(s);
-    if(rank==0){
-        std::mt19937 gen(42);
-        std::uniform_int_distribution<int> dis(0, N-1);
-        for(int i=0;i<s;++i) sample_idx[i] = dis(gen);
-    }
-    MPI_Bcast(sample_idx.data(), s, MPI_INT, 0, MPI_COMM_WORLD);
-
-    MatrixXd W_local(local_n, s);
-    for(int i=0;i<local_n;++i){
-        for(int j=0;j<s;++j){
-            double dist = (Xblock.row(i)-Xs.row(sample_idx[j])).squaredNorm();
-            W_local(i,j) = std::exp(-dist/(sigma_*sigma_));
-        }
-    }
-
-    // --- chunked Reduce ---
-    MatrixXd W_sample;
-    if(rank==0) W_sample = MatrixXd(s,s);
-    int block = 10000;
-    for(int start=0; start<local_n*s; start+=block){
-        int count = std::min(block, local_n*s - start);
-        MPI_Reduce(rank==0 ? MPI_IN_PLACE : W_local.data()+start,
-                   rank==0 ? W_sample.data()+start : W_local.data()+start,
-                   count, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    }
-
-    // Eigen decomposition on root
-    MatrixXd eigvecs_sample;
-    if(rank==0){
-        SelfAdjointEigenSolver<MatrixXd> es(W_sample);
-        eigvecs_sample = es.eigenvectors().rightCols(k_);
-    }
-
-    // --- safe Bcast ---
-    if(s*k_ > 0)
-        MPI_Bcast(eigvecs_sample.data(), s*k_, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-
-    // Approx eigenvectors for local points
-    MatrixXd eigvecs_block(local_n, k_);
-    for(int i=0;i<local_n;++i){
-        for(int j=0;j<k_;++j){
-            double sum = 0;
-            for(int l=0;l<s;++l) sum += W_local(i,l) * eigvecs_sample(l,j);
-            eigvecs_block(i,j) = sum;
-        }
-    }
-
-    typedef Matrix<double, Dynamic, Dynamic, RowMajor> MatrixRowMajor;
-    MatrixRowMajor localEig(local_n, k_);
-    std::memcpy(localEig.data(), eigvecs_block.data(), sizeof(double)*local_n*k_);
-
-    // --- K-means ---
-    if(rank==0) std::cout << "[Step 2/3] Eigen Decomposition Done. Starting Distributed K-Means..." << std::endl;
-    t1 = Clock::now();
-    double best_sse = 1e30;
-    std::vector<int> best_labels;
-    if(rank==0) best_labels.assign(N, 0);
-    int runs = (kmeans_runs_ < 1) ? 1 : kmeans_runs_;
-
-    for(int r=0; r<runs; ++r) {
-        double sse = kmeans_mpi(localEig, N, rows_count, 200, r * 100);
-        if(rank == 0) {
-            if(sse < best_sse) { best_sse = sse; best_labels = labels_; }
-        }
-    }
-
-    if(rank == 0) labels_ = best_labels;
-    auto t2 = Clock::now();
-    if(rank==0) {
-        std::cout << "[Step 3/3] K-means (Best of " << runs << " runs): "
-                  << std::chrono::duration<double>(t2 - t1).count() << " s\n";
-    }
+    MPI_Gatherv(local_labels.data(), local_n, MPI_INT, 
+                rank == 0 ? labels_.data() : nullptr, 
+                rows_count.data(), displs.data(), MPI_INT, 0, MPI_COMM_WORLD);
 }
