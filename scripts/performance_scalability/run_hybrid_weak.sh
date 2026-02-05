@@ -10,6 +10,7 @@ module purge
 module load gcc91
 module load mpich-3.2.1--gcc-9.1.0
 
+echo "==== Compiling Hybrid MPI Version ===="
 mpicxx -O3 -std=c++17 -fopenmp -I ./eigen_local \
     src/mainMPI.cpp src/SpectralClusteringMPI.cpp \
     -o spectral_hybrid
@@ -22,19 +23,30 @@ fi
 OUTPUT_DIR="results/hybrid_weak"
 mkdir -p $OUTPUT_DIR
 
+# --- Set OpenMP threads ---
 RANKS=(1 2 4 8 16)
 OMP_THREADS=4
 export OMP_NUM_THREADS=$OMP_THREADS
 
-for r in "${RANKS[@]}"; do
-    DATASET="data/mixed_dataset_100k_${r}.csv"  # dataset scaled with r
-    if [ ! -f "$DATASET" ]; then
-        echo "Dataset $DATASET not found! Skip."
-        continue
+# --- Weak scaling datasets ---
+DATASETS=("data/weak_dataset_10k_1rank.csv" \
+          "data/weak_dataset_20k_2rank.csv" \
+          "data/weak_dataset_40k_4rank.csv" \
+          "data/weak_dataset_80k_8rank.csv" \
+          "data/weak_dataset_160k_16rank.csv")
+
+# --- Loop: dataset ↔ rank ---
+for i in "${!DATASETS[@]}"; do
+    DATASET=${DATASETS[$i]}
+    r=${RANKS[$i]}
+    BASENAME=$(basename "$DATASET" .csv)
+    if [ -f "$DATASET" ]; then
+        echo "==== Running Hybrid Weak Scaling: $r MPI ranks x $OMP_THREADS threads on $DATASET ===="
+        mpirun -np $r ./spectral_hybrid "$DATASET" 6 10 0.05 5 \
+            > "$OUTPUT_DIR/log_${BASENAME}_${r}ranks.txt"
+    else
+        echo "Warning: Dataset $DATASET not found. Skipping..."
     fi
-    echo "==== Running Hybrid Weak Scaling: $r MPI ranks x $OMP_THREADS threads ===="
-    mpirun -np $r ./spectral_hybrid "$DATASET" 6 10 0.05 5 \
-        > "$OUTPUT_DIR/log_${r}ranks.txt"
 done
 
 echo "==== Hybrid Weak Scaling Finished. Logs in $OUTPUT_DIR ===="
