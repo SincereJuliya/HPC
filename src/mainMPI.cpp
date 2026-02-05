@@ -4,6 +4,7 @@
 #include <fstream>
 #include <iostream>
 #include <vector>
+#include <iomanip>
 
 Eigen::MatrixXd read_csv_root(const std::string &fname) {
     std::ifstream f(fname);
@@ -27,6 +28,9 @@ int main(int argc, char** argv) {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
+    // --- START TIMER ---
+    double start_time = MPI_Wtime();
+
     std::string datafile = "data/mixed_dataset.csv";
     int k=8, knn=10, runs=5;
     double sigma=0.05;
@@ -45,14 +49,16 @@ int main(int argc, char** argv) {
         N_global = (int)full_data.rows();
         D = (int)full_data.cols();
         full_buffer.resize((size_t)N_global * D);
-        // Map RowMajor
         Eigen::Map<MatrixRowMajor>(full_buffer.data(), N_global, D) = full_data;
+        
+        std::cout << "\n========================================" << std::endl;
+        std::cout << "Dataset: " << datafile << std::endl;
+        std::cout << "Global N: " << N_global << " | Ranks: " << size << std::endl;
     }
 
     MPI_Bcast(&N_global, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(&D, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-    // Calculate distribution counts
     std::vector<int> sendcounts(size), displs(size);
     int rem = N_global % size;
     int offset = 0;
@@ -66,19 +72,25 @@ int main(int argc, char** argv) {
     int local_n = (N_global / size) + (rank < rem ? 1 : 0);
     MatrixRowMajor local_data(local_n, D);
 
-    // Scatter data: Each rank gets only its slice!
     MPI_Scatterv(rank == 0 ? full_buffer.data() : nullptr, sendcounts.data(), displs.data(), 
                  MPI_DOUBLE, local_data.data(), local_n * D, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
     SpectralClusteringMPI sc(k, knn, sigma, runs);
     sc.fit(local_data, N_global);
 
+    // --- END TIMER ---
+    double end_time = MPI_Wtime();
+
     if(rank == 0) {
         auto labels = sc.get_labels();
         std::ofstream out("results/labels.csv");
         out << "index,label\n";
         for(size_t i=0; i<labels.size(); ++i) out << i << "," << labels[i] << "\n";
-        std::cout << "Clustering complete. Labels saved to results/labels.csv\n";
+        
+        std::cout << std::fixed << std::setprecision(4);
+        std::cout << "Total execution time: " << (end_time - start_time) << " s" << std::endl;
+        std::cout << "Clustering complete." << std::endl;
+        std::cout << "========================================\n" << std::endl;
     }
 
     MPI_Finalize();

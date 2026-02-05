@@ -141,3 +141,8 @@ python3 scripts/plot_results.py data/dataset_mca_20k.csv data/dataset_mca_20k_la
 * Juliya Sharipova
 
 Course: High Performance Computing - University of Trento.
+
+qsub scripts/performance_scalability/run_hybrid_strong.sh
+qsub scripts/performance_scalability/run_hybrid_weak.sh
+qsub scripts/performance_scalability/run_mpi_strong.sh
+qsub scripts/performance_scalability/run_mpi_weak.sh
