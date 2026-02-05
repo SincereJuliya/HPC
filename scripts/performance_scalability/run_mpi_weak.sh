@@ -20,6 +20,9 @@ mpicxx -O3 -std=c++17 -fopenmp -I ./eigen_local \
 OUTPUT_DIR="results/mpi_weak"
 mkdir -p $OUTPUT_DIR
 
+# Ensure execution permission
+chmod +x ./spectral_mpi
+
 RANKS=(1 2 4 8 16 32 64)
 DATASETS=("data/weak_dataset_10k_1rank.csv" \
           "data/weak_dataset_20k_2rank.csv" \

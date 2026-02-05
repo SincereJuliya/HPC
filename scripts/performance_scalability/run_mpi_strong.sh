@@ -24,6 +24,9 @@ mpicxx -O3 -std=c++17 -I ./eigen_local \
 OUTPUT_DIR="results/mpi_strong"
 mkdir -p $OUTPUT_DIR
 
+# Ensure execution permission
+chmod +x ./spectral_mpi
+
 # List of datasets (same as in hybrid script)
 DATASETS=(
     "data/mixed_dataset_10k.csv" 
