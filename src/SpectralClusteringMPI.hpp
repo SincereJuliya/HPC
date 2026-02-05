@@ -9,7 +9,6 @@ class SpectralClusteringMPI {
 public:
     SpectralClusteringMPI(int k=3, int knn=10, double sigma=-1.0, int kmeans_runs=5);
 
-    // localData is a UNIQUE block of points for this rank
     void fit(Eigen::Ref<MatrixRowMajor> localData, int N_global);
 
     const std::vector<int>& get_labels() const { return labels_; }
@@ -19,7 +18,7 @@ private:
     int knn_;
     double sigma_;
     int kmeans_runs_;
-    std::vector<int> labels_; // Populated on rank 0 after fit
+    std::vector<int> labels_;
 
     void standardize_distributed(Eigen::Ref<MatrixRowMajor> localData, int N_global);
     void kmeans_hpc(const Eigen::MatrixXd& localX, int N_global, const std::vector<int>& rows_count);

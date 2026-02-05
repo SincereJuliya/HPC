@@ -83,7 +83,6 @@ int main(int argc, char** argv) {
 
     if(rank == 0) {
         auto labels = sc.get_labels();
-        // Создаем уникальное имя: labels_100k_16ranks.csv
         std::string out_name = "results/labels_" + datafile.substr(datafile.find_last_of("_") + 1, datafile.find_last_of(".") - datafile.find_last_of("_") - 1) + "_" + std::to_string(size) + "ranks.csv";
         
         std::ofstream out(out_name);
