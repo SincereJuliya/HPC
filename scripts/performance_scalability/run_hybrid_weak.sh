@@ -6,19 +6,20 @@
 
 cd $PBS_O_WORKDIR
 
+# Clean environment and load modules
 module purge
 module load gcc91
 module load mpich-3.2.1--gcc-9.1.0
 
+# Fixed 4 threads per MPI rank
 export OMP_NUM_THREADS=4
 
-echo "==== Compiling Hybrid Version ===="
-mpicxx -O3 -std=c++17 -fopenmp -I ./eigen_local \
-    src/mainMPI.cpp src/SpectralClusteringMPI.cpp \
-    -o spectral_hybrid
-
+# Create results directory
 OUTPUT_DIR="results/hybrid_weak"
 mkdir -p $OUTPUT_DIR
+
+# Ensure execution permission (just in case)
+chmod +x ./spectral_hybrid
 
 RANKS=(1 2 4 8 16)
 DATASETS=("data/weak_dataset_10k_1rank.csv" \
@@ -30,8 +31,18 @@ DATASETS=("data/weak_dataset_10k_1rank.csv" \
 for i in "${!DATASETS[@]}"; do
     r=${RANKS[$i]}
     DATASET=${DATASETS[$i]}
+    
+    if [ ! -f "$DATASET" ]; then
+        echo "Warning: $DATASET not found. Skipping..."
+        continue
+    fi
+    
     BASENAME=$(basename "$DATASET" .csv)
     echo "==== Running Hybrid Weak: $r Ranks x 4 Threads on $DATASET ===="
+    
+    # Run using the pre-compiled hybrid binary
     mpirun -np $r ./spectral_hybrid "$DATASET" 6 10 0.05 5 \
         > "$OUTPUT_DIR/log_${BASENAME}_${r}ranks.txt"
 done
+
+echo "==== All Hybrid Weak jobs completed ===="
