@@ -12,16 +12,8 @@ module load mpich-3.2.1--gcc-9.1.0
 
 export OMP_NUM_THREADS=1
 
-echo "==== Compiling MPI Version ===="
-mpicxx -O3 -std=c++17 -fopenmp -I ./eigen_local \
-    src/mainMPI.cpp src/SpectralClusteringMPI.cpp \
-    -o spectral_mpi
-
 OUTPUT_DIR="results/mpi_weak"
 mkdir -p $OUTPUT_DIR
-
-# Ensure execution permission
-chmod +x ./spectral_mpi
 
 RANKS=(1 2 4 8 16 32 64)
 DATASETS=("data/weak_dataset_10k_1rank.csv" \

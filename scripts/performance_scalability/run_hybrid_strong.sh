@@ -14,17 +14,9 @@ module load mpich-3.2.1--gcc-9.1.0
 # Define the number of OpenMP threads per MPI rank
 export OMP_NUM_THREADS=4
 
-echo "==== Compiling Hybrid Version (MPI + OpenMP) ===="
-mpicxx -O3 -std=c++17 -fopenmp -I ./eigen_local \
-    src/mainMPI.cpp src/SpectralClusteringMPI.cpp \
-    -o spectral_hybrid
-
 # Create results directory
 OUTPUT_DIR="results/hybrid_strong"
 mkdir -p $OUTPUT_DIR
-
-# Ensure execution permission
-chmod +x ./spectral_hybrid
 
 # List of datasets to test scalability
 DATASETS=(
