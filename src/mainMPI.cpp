@@ -83,13 +83,16 @@ int main(int argc, char** argv) {
 
     if(rank == 0) {
         auto labels = sc.get_labels();
-        std::ofstream out("results/labels.csv");
+        // Создаем уникальное имя: labels_100k_16ranks.csv
+        std::string out_name = "results/labels_" + datafile.substr(datafile.find_last_of("_") + 1, datafile.find_last_of(".") - datafile.find_last_of("_") - 1) + "_" + std::to_string(size) + "ranks.csv";
+        
+        std::ofstream out(out_name);
         out << "index,label\n";
         for(size_t i=0; i<labels.size(); ++i) out << i << "," << labels[i] << "\n";
         
         std::cout << std::fixed << std::setprecision(4);
         std::cout << "Total execution time: " << (end_time - start_time) << " s" << std::endl;
-        std::cout << "Clustering complete." << std::endl;
+        std::cout << "Clustering complete. Saved to: " << out_name << std::endl;
         std::cout << "========================================\n" << std::endl;
     }
 
