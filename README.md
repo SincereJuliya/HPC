@@ -117,7 +117,7 @@ qsub scripts/run_seq.pbs
 
 You can customize the run configuration (nodes, cores, dataset) by editing the variables inside the `.pbs` files.
 
-**Submit the other Job**
+**Submit Scalability Test**
 
 ```bash
 qsub scripts/performance_scalability/run_hybrid_strong.sh
