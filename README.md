@@ -117,6 +117,15 @@ qsub scripts/run_seq.pbs
 
 You can customize the run configuration (nodes, cores, dataset) by editing the variables inside the `.pbs` files.
 
+**Submit the other Job**
+
+```bash
+qsub scripts/performance_scalability/run_hybrid_strong.sh
+qsub scripts/performance_scalability/run_hybrid_weak.sh
+qsub scripts/performance_scalability/run_mpi_strong.sh
+qsub scripts/performance_scalability/run_mpi_weak.sh
+```
+
 ##  Visualization
 
 After running the simulation, result labels are saved in the `data/` folder. Use the Python script to visualize them.
@@ -142,10 +151,3 @@ python3 scripts/plot_results.py data/dataset_mca_20k.csv data/dataset_mca_20k_la
 * Juliya Sharipova
 
 Course: High Performance Computing - University of Trento.
-
-```bash
-qsub scripts/performance_scalability/run_hybrid_strong.sh
-qsub scripts/performance_scalability/run_hybrid_weak.sh
-qsub scripts/performance_scalability/run_mpi_strong.sh
-qsub scripts/performance_scalability/run_mpi_weak.sh
-```
