@@ -4,16 +4,8 @@
 ![MPI](https://img.shields.io/badge/MPI-OpenMP-orange.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 
-A highly optimized, hybrid parallel implementation of the **Spectral Clustering** algorithm.
-This project combines **MPI** (Distributed Memory) and **OpenMP** (Shared Memory) to efficiently cluster large datasets using the Normalized Symmetric Laplacian and K-Means.
-
-##  Features
-
-* **Hybrid Parallelism:** Uses MPI for inter-node communication and OpenMP for intra-node acceleration.
-* **Self-Tuning Similarity:** Implements Zelnik-Manor & Perona (2004) local scaling for adaptive sigma.
-* **Sparse/Dense Optimization:** Efficient matrix operations using the Eigen library.
-* **Robust K-Means:** Distributed K-Means implementation for the final clustering step.
-* **Visualization:** Python scripts included for 2D scatter plots and high-dimensional t-SNE projections.
+An optimized hybrid parallel implementation of the **Spectral Clustering** algorithm.
+This project combines **MPI** (Distributed Memory) and **OpenMP** (Shared Memory) to efficiently cluster large datasets.
 
 ##  Project Structure
 
@@ -32,12 +24,14 @@ Spectral_Clustering_HPC/
 │   ├── run_mpi.pbs             # PBS Job Script (Parallel)
 │   ├── generate_data.py        # Dataset Generator
 │   └── plot_results.py         # Visualization Tool
+│   └── performance_scalability/         # Strong+Weak scalability for our implementations
 │
 ├── data/                       # Datasets & Results
 │   ├── mixed_dataset.csv             # Input: Synthetic Benchmark (Spirals/Circles) for validation
 │   ├── mixed_dataset_labels_mpi.csv  # Output: Cluster labels for the synthetic dataset
 │   ├── dataset_mca_20k.csv           # Input: Mouse Cell Atlas (20k cells) for scalability testing
 │   └── dataset_mca_20k_labels.csv    # Output: Cluster labels for the biological dataset
+│   └── others    # for the Strong+Weak scalability
 │
 ├── old_base_code/              # Oldest try and implementations
 ├── eigen_local/                # (Optional) Local copy of Eigen 3 library
@@ -142,7 +136,9 @@ python3 scripts/plot_results.py data/dataset_mca_20k.csv data/dataset_mca_20k_la
 
 Course: High Performance Computing - University of Trento.
 
+```bash
 qsub scripts/performance_scalability/run_hybrid_strong.sh
 qsub scripts/performance_scalability/run_hybrid_weak.sh
 qsub scripts/performance_scalability/run_mpi_strong.sh
 qsub scripts/performance_scalability/run_mpi_weak.sh
+```
