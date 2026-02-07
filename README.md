@@ -125,6 +125,7 @@ qsub scripts/performance_scalability/run_hybrid_weak.sh
 qsub scripts/performance_scalability/run_mpi_strong.sh
 qsub scripts/performance_scalability/run_mpi_weak.sh
 ```
+You can customize the run configuration (nodes, cores, dataset) by editing the variables inside the `.sh` files.
 
 ##  Visualization
 
