@@ -1,0 +1,8 @@
+
+========================================
+Dataset: data/weak_dataset_40k_4rank.csv
+Global N: 39999 | Ranks: 4
+Total execution time: 8.6931 s
+Clustering complete. Saved to: results/labels_4rank_4ranks.csv
+========================================
+

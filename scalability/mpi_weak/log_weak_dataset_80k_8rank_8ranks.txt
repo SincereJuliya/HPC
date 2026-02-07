@@ -1,0 +1,8 @@
+
+========================================
+Dataset: data/weak_dataset_80k_8rank.csv
+Global N: 80004 | Ranks: 8
+Total execution time: 8.6533 s
+Clustering complete. Saved to: results/labels_8rank_8ranks.csv
+========================================
+

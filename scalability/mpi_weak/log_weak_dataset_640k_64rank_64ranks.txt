@@ -1,0 +1,8 @@
+
+========================================
+Dataset: data/weak_dataset_640k_64rank.csv
+Global N: 639999 | Ranks: 64
+Total execution time: 12.0494 s
+Clustering complete. Saved to: results/labels_64rank_64ranks.csv
+========================================
+

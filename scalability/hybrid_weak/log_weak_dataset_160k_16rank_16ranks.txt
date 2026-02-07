@@ -1,0 +1,8 @@
+
+========================================
+Dataset: data/weak_dataset_160k_16rank.csv
+Global N: 159999 | Ranks: 16
+Total execution time: 9.5582 s
+Clustering complete. Saved to: results/labels_16rank_16ranks.csv
+========================================
+

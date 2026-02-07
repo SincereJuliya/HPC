@@ -1,0 +1,8 @@
+
+========================================
+Dataset: data/mixed_dataset_500k.csv
+Global N: 499995 | Ranks: 16
+Total execution time: 13.2585 s
+Clustering complete. Saved to: results/labels_500k_16ranks.csv
+========================================
+

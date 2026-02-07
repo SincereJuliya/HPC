@@ -1,0 +1,8 @@
+
+========================================
+Dataset: data/weak_dataset_320k_32rank.csv
+Global N: 320004 | Ranks: 32
+Total execution time: 9.9805 s
+Clustering complete. Saved to: results/labels_32rank_32ranks.csv
+========================================
+
