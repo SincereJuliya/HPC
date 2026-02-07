@@ -1,4 +1,7 @@
 # High Performance Spectral Clustering
+<img width="1920" height="1080" alt="High-Performance Spectral Clustering using Hybrid MPI and OpenMP" src="https://github.com/user-attachments/assets/8c3af9ce-d8f2-4dea-a519-a7e673669e0c" />
+
+## Our Clustering Results:
 ![Result Preview](mixed_dataset_labels_mpi_plot.png)
 ![C++](https://img.shields.io/badge/C++-17-blue.svg)
 ![MPI](https://img.shields.io/badge/MPI-OpenMP-orange.svg)
