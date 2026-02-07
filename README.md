@@ -24,7 +24,11 @@ Spectral_Clustering_HPC/
 │   ├── run_mpi.pbs             # PBS Job Script (Parallel)
 │   ├── generate_data.py        # Dataset Generator
 │   └── plot_results.py         # Visualization Tool
-│   └── performance_scalability/         # Strong+Weak scalability for our implementations
+│   ── performance_scalability/ # Scalability tests
+│       ├── run_hybrid_strong.sh
+│       ├── run_hybrid_weak.sh
+│       ├── run_mpi_strong.sh
+│       └── run_mpi_weak.sh
 │
 ├── data/                       # Datasets & Results
 │   ├── mixed_dataset.csv             # Input: Synthetic Benchmark (Spirals/Circles) for validation
@@ -76,7 +80,7 @@ Note: The Makefile uses `mpicxx` for both targets to ensure C++17 support on old
 
 ```bash
 # Syntax: ./spectral_seq <file> <k> <knn> <sigma> <runs>
-./spectral_seq data/mixed_dataset.csv 6 10 0.05 5
+./spectral_seq data/mixed_dataset.csv 6 10 0.05 1
 ```
 
 **Parallel Run (MPI):**
@@ -84,16 +88,16 @@ Note: The Makefile uses `mpicxx` for both targets to ensure C++17 support on old
 ```bash
 # Syntax: mpirun -np <ranks> ./spectral_mpi <file> <k> <knn> <sigma> <runs>
 # Example: Run on 4 processes
-mpirun -np 4 ./spectral_mpi data/mixed_dataset.csv 6 10 0.05 10
+mpirun -np 4 ./spectral_mpi data/mixed_dataset.csv 6 10 0.05 1
 ```
 
 **Parameters:**
 
 * `<file>`: Path to CSV dataset (x, y coordinates).
 * `<k>`: Number of clusters to find.
-* `<knn>`: Number of nearest neighbors for similarity graph.
-* `<sigma>`: Gaussian kernel width (use -1 for auto-tuning).
-* `<runs>`: Number of K-Means restarts (for stability).
+* `<knn>`: Number of nearest neighbors (used in Sequential mode).
+* `<sigma>`: Gaussian kernel width. 
+    * *Note:* Use `-1` for auto-tuning (Zelnik-Manor heuristic) **only in Sequential mode**. The MPI implementation requires a fixed sigma value.
 
 ### 2. Running on HPC Cluster (PBS/Torque)
 
@@ -128,6 +132,9 @@ python3 scripts/plot_results.py data/mixed_dataset.csv data/mixed_dataset_labels
 ```bash
 python3 scripts/plot_results.py data/dataset_mca_20k.csv data/dataset_mca_20k_labels.csv
 ```
+> **Note on Implementation:**
+> * **Sequential:** Uses full similarity matrix construction (exact spectral clustering).
+> * **MPI:** Uses **Distributed Nyström Approximation** to handle large datasets and reduce memory complexity.
 
 ##  Authors
 
